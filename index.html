@@ -229,15 +229,18 @@
             </div>
 
             <!-- Vstupná oblasť pre písanie správ a prepínač -->
-            <div class="flex items-center space-x-3 mt-auto">
-                <label class="toggle-switch flex-shrink-0">
-                    <input type="checkbox" id="tts-api-toggle" checked>
-                    <span class="slider"></span>
-                </label>
-                <input type="text" id="user-input" placeholder="Napíšte svoju správu..." class="flex-grow p-4 bg-gray-900/60 text-white placeholder-gray-400 rounded-full border border-gray-700/50 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-200">
-                <button id="send-button" class="p-4 bg-purple-700 hover:bg-purple-800 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900">
-                    <i class="fa-solid fa-paper-plane"></i>
-                </button>
+            <div class="flex flex-col space-y-2 mt-auto">
+                <p id="cooldown-status" class="text-sm font-bold text-red-400 text-center hidden"></p>
+                <div class="flex items-center space-x-3">
+                    <label class="toggle-switch flex-shrink-0">
+                        <input type="checkbox" id="tts-api-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <input type="text" id="user-input" placeholder="Napíšte svoju správu..." class="flex-grow p-4 bg-gray-900/60 text-white placeholder-gray-400 rounded-full border border-gray-700/50 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-200">
+                    <button id="send-button" class="p-4 bg-purple-700 hover:bg-purple-800 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </main>
@@ -256,7 +259,8 @@
         const paysafeCodeInput = document.getElementById('paysafe-code');
         const paymentError = document.getElementById('payment-error');
         const currentPriceDisplay = document.getElementById('current-price-display');
-        const messageLimitStatus = document.getElementById('message-limit-status'); // Nový element
+        const messageLimitStatus = document.getElementById('message-limit-status');
+        const cooldownStatus = document.getElementById('cooldown-status'); // Nový element
 
         // Modálne prvky
         const modalBackdrop = document.getElementById('modal-backdrop');
@@ -266,6 +270,7 @@
 
         // Stavové premenné
         let chatHistory = [];
+        // API kľúč pre Gemini. V prostredí Canvas sa nastaví automaticky.
         const geminiApiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o";
         let audioInstance = null;
         const SUBSCRIPTION_KEY = 'premium-chat-subscription';
@@ -276,6 +281,14 @@
         // Kľúč pre lokálne úložisko pre počet správ
         const MESSAGE_COUNT_KEY = 'chat-message-count';
         // --- KONIEC NOVÝCH KONŠTÁNT ---
+        
+        // --- NOVÉ PREMENNÉ PRE NÁHODNÝ ČASOVÝ LIMIT (COOLDOWN) ---
+        const MESSAGES_BEFORE_COOLDOWN = 5; // Počet správ pred spustením cool-downu
+        let messagesSinceCooldown = 0; // Počet správ od posledného cool-downu
+        let isCooldownActive = false;
+        let cooldownEndTime = null;
+        let cooldownInterval = null; // Na uloženie intervalu pre aktualizáciu časovača
+        // --- KONIEC NOVÝCH PREMENNÝCH ---
 
         // --- Funkcie pre modálne okná namiesto alert() ---
         /**
@@ -363,11 +376,11 @@
                 const daysRemaining = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
                 subscriptionStatus.innerText = `Predplatné je aktívne. Zostáva ${daysRemaining} dní.`;
                 messageLimitStatus.innerText = ''; // Bez obmedzenia správ pre premium používateľov
+                cooldownStatus.classList.add('hidden'); // Skrytie stavu cooldown pre premium používateľov
 
                 // Vymaže sa existujúca história a pridá sa nová úvodná správa
                 chatHistory = [];
                 chatWindow.innerHTML = '';
-                // Spustí sa aj prečítanie správy, ak je prepínač zapnutý
                 appendAiMessage("Ahoj! Poďme chatovať. Generovanie hlasu je zapnuté.", ttsApiToggle.checked, false);
                 chatWindow.scrollTop = chatWindow.scrollHeight;
                 
@@ -429,6 +442,55 @@
                 checkSubscription // Po zatvorení modálneho okna sa skontroluje predplatné
             );
         }
+        
+        // --- NOVÁ FUNKCIA: Správa cool-downu ---
+        /**
+         * Spustí cool-down (časový limit) na posielanie správ.
+         */
+        function startCooldown() {
+            // Náhodný čas od 1 do 5 minút
+            const randomTimeInMinutes = Math.floor(Math.random() * 5) + 1;
+            const cooldownDuration = randomTimeInMinutes * 60 * 1000;
+            cooldownEndTime = new Date(Date.now() + cooldownDuration);
+            isCooldownActive = true;
+            messagesSinceCooldown = 0; // Resetuje počítadlo správ
+
+            userInput.disabled = true;
+            sendButton.disabled = true;
+            userInput.placeholder = "Prebieha časový limit...";
+            cooldownStatus.classList.remove('hidden');
+
+            // Aktualizuje časovač každú sekundu
+            if (cooldownInterval) clearInterval(cooldownInterval);
+            cooldownInterval = setInterval(updateCooldownTimer, 1000);
+
+            showModal("Časový limit", `Dosiahli ste limit správ pre túto reláciu. Skúste to znova o ${randomTimeInMinutes} minút.`, () => {
+                // Po zatvorení modálu sa nič nedeje, časovač beží na pozadí
+            });
+        }
+        
+        /**
+         * Aktualizuje zobrazenie zostávajúceho času do konca cool-downu.
+         */
+        function updateCooldownTimer() {
+            const now = new Date();
+            if (cooldownEndTime > now) {
+                const remainingTime = cooldownEndTime - now;
+                const minutes = Math.floor(remainingTime / 60000);
+                const seconds = Math.floor((remainingTime % 60000) / 1000);
+                cooldownStatus.innerText = `Časový limit: Zostáva ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            } else {
+                // Časový limit vypršal
+                isCooldownActive = false;
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.placeholder = "Napíšte svoju správu...";
+                cooldownStatus.classList.add('hidden');
+                clearInterval(cooldownInterval);
+                cooldownInterval = null;
+                showModal("Časový limit vypršal", "Môžete pokračovať v chatovaní.");
+            }
+        }
 
         // --- Pomocné funkcie pre UI a API volania ---
         
@@ -468,6 +530,11 @@
             throw new Error(`Volanie API pre ${errorContext} zlyhalo po opakovaných pokusoch.`);
         }
 
+        /**
+         * Konvertuje base64 reťazec na ArrayBuffer.
+         * @param {string} base64 Base64 zakódované dáta.
+         * @returns {ArrayBuffer} Dekódované dáta v ArrayBuffer.
+         */
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -478,6 +545,12 @@
             return bytes.buffer;
         }
 
+        /**
+         * Konvertuje PCM dáta na WAV Blob.
+         * @param {ArrayBuffer} pcmData RAW PCM audio dáta.
+         * @param {number} sampleRate Vzorkovacia frekvencia zvuku.
+         * @returns {Blob} Objekty Blob s hlavičkou WAV.
+         */
         function pcmToWav(pcmData, sampleRate) {
             const pcm16 = new Int16Array(pcmData);
             const buffer = new ArrayBuffer(44 + pcm16.byteLength);
@@ -495,12 +568,12 @@
             writeString('WAVE');
             writeString('fmt ');
             view.setUint32(offset, 16, true); offset += 4;
-            view.setUint16(offset, 1, true); offset += 2;
-            view.setUint16(offset, 1, true); offset += 2;
-            view.setUint32(offset, sampleRate, true); offset += 4;
-            view.setUint32(offset, sampleRate * 2, true); offset += 4;
-            view.setUint16(offset, 2, true); offset += 2;
-            view.setUint16(offset, 16, true); offset += 2;
+            view.setUint16(offset, 1, true); offset += 2; // AudioFormat: 1 = PCM
+            view.setUint16(offset, 1, true); offset += 2; // NumChannels: 1 = Mono
+            view.setUint32(offset, sampleRate, true); offset += 4; // SampleRate
+            view.setUint32(offset, sampleRate * 2, true); offset += 4; // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
+            view.setUint16(offset, 2, true); offset += 2; // BlockAlign (NumChannels * BitsPerSample/8)
+            view.setUint16(offset, 16, true); offset += 2; // BitsPerSample
             writeString('data');
             view.setUint32(offset, pcm16.byteLength, true); offset += 4;
             for (let i = 0; i < pcm16.length; i++) {
@@ -510,7 +583,13 @@
             return new Blob([view], { type: 'audio/wav' });
         }
         
+        /**
+         * Volá API Gemini na generovanie hlasu z textu.
+         * @param {string} text Text, ktorý sa má prečítať.
+         * @returns {Promise<string|null>} URL objektu s audio dátami alebo null pri chybe.
+         */
         async function speakWithGemini(text) {
+            // Pridanie inštrukcie pre model, aby hovoril v slovenskom jazyku s priateľským tónom
             const prompt = `Hovorte veselým a priateľským hlasom v slovenčine: ${text}`;
             const payload = {
                 contents: [{
@@ -552,6 +631,11 @@
             }
         }
         
+        /**
+         * Prehrá zvuk z daného textu, ak je prepínač zapnutý.
+         * Ak už nejaký zvuk hrá, zastaví ho.
+         * @param {string} text Text, ktorý sa má prečítať.
+         */
         async function playAudio(text) {
             if (!ttsApiToggle.checked) {
                 return;
@@ -624,7 +708,24 @@
             const userMessage = userInput.value.trim();
             if (!userMessage) return;
 
-            // --- KONTROLA LIMITU SPRÁV (NOVÉ) ---
+            // Kontrola aktívneho cooldownu
+            if (isCooldownActive) {
+                if (cooldownEndTime > new Date()) {
+                    showModal("Časový limit aktívny", `Nemôžete posielať správy, kým neuplynie časový limit.`);
+                    return;
+                } else {
+                    // Cooldown vypršal, zrušíme ho
+                    isCooldownActive = false;
+                    userInput.disabled = false;
+                    sendButton.disabled = false;
+                    userInput.placeholder = "Napíšte svoju správu...";
+                    cooldownStatus.classList.add('hidden');
+                    if (cooldownInterval) clearInterval(cooldownInterval);
+                    cooldownInterval = null;
+                }
+            }
+
+            // Kontrola limitu správ pre free verziu
             const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
             const now = new Date();
             const isSubscribed = subscriptionData && new Date(subscriptionData.expiryDate) > now;
@@ -634,7 +735,16 @@
                 showModal("Limit správ prekročený", `Dosiahli ste maximálny počet ${MAX_MESSAGES_FREE} správ pre skúšobnú verziu. Aktivujte si predplatné pre neobmedzený chat.`);
                 return;
             }
-            // --- KONIEC KONTROLY LIMITU SPRÁV ---
+            
+            // Kontrola, či sa má spustiť nový cooldown (len pre nepredplatených užívateľov)
+            if (!isSubscribed) {
+                messagesSinceCooldown++;
+                if (messagesSinceCooldown >= MESSAGES_BEFORE_COOLDOWN) {
+                    startCooldown();
+                    return; // Vráti sa, aby sa správa neposlala počas spustenia cooldownu
+                }
+            }
+
 
             if (audioInstance) {
                 audioInstance.pause();
@@ -644,13 +754,12 @@
             appendUserMessage(userMessage);
             userInput.value = '';
             
-            // --- AKTUALIZÁCIA POČTU SPRÁV (NOVÉ) ---
+            // Aktualizácia počtu správ pre free verziu
             if (!isSubscribed) {
                 messageCount++;
                 saveToLocalStorage(MESSAGE_COUNT_KEY, messageCount);
                 messageLimitStatus.innerText = `Skúšobná verzia: ${MAX_MESSAGES_FREE - messageCount} správ zostáva.`;
             }
-            // --- KONIEC AKTUALIZÁCIE POČTU SPRÁV ---
 
 
             const typingIndicator = document.createElement('div');
@@ -686,7 +795,7 @@
                     
                     typingIndicator.remove();
                     
-                    appendAiMessage(aiResponse);
+                    appendAiMessage(aiResponse, ttsApiToggle.checked);
                     
                 } else {
                     typingIndicator.remove();
