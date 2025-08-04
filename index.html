@@ -136,8 +136,8 @@
             animation: fade-in-up 0.5s ease-out forwards;
         }
         
-        /* Štýly pre platobnú vrstvu a formuláre */
-        .payment-overlay {
+        /* Štýly pre modal platby */
+        .payment-modal {
             position: absolute;
             top: 0;
             left: 0;
@@ -172,17 +172,6 @@
         <!-- Okno chatu pre zobrazenie správ -->
         <div id="chat-window" class="message-container flex-grow mb-4 p-4 space-y-4">
             <!-- Správy sa budú vkladať sem cez JavaScript -->
-            <div class="flex items-start">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
-                    <i class="fa-solid fa-robot text-white"></i>
-                </div>
-                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
-                    <p>Ahoj! Som pripravený na chat. Pre odomknutie chatu je potrebné zakúpiť balík.</p>
-                </div>
-                <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
-                    <i class="fa-solid fa-volume-high"></i>
-                </button>
-            </div>
         </div>
 
         <!-- Vstupná oblasť pre písanie správ -->
@@ -194,11 +183,13 @@
         </div>
     </main>
 
-    <!-- Prekrytie pre platobnú bránu -->
-    <div id="payment-overlay" class="payment-overlay">
+    <!-- Modal pre platbu (zobrazí sa len v prípade potreby) -->
+    <div id="payment-modal" class="payment-modal hidden">
         <div class="bg-gray-800/90 text-white p-8 rounded-3xl shadow-2xl text-center max-w-sm">
-            <h2 class="text-3xl font-bold mb-4">Odomknite chat</h2>
-            <p class="mb-6 text-gray-300">Zakúpte si balík za **5,77€** pre trvalý prístup k AI chatu.</p>
+            <h2 class="text-3xl font-bold mb-4">Obnovte si predplatné</h2>
+            <p id="payment-message" class="mb-6 text-gray-300"></p>
+            
+            <!-- Možnosti platby -->
             <div id="payment-options" class="space-y-4">
                 <button onclick="showPaymentForm('paysafe')" class="w-full p-3 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200 flex items-center justify-center space-x-2">
                     <i class="fa-solid fa-credit-card text-xl"></i><span>PaySafeCard</span>
@@ -214,7 +205,7 @@
                     <label for="paysafe-code" class="block mb-2 text-gray-300">Zadajte kód PaySafeCard</label>
                     <input type="text" id="paysafe-code" class="w-full p-3 bg-gray-900/60 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="XXXX-XXXX-XXXX-XXXX">
                 </div>
-                <button onclick="simulatePayment()" class="w-full p-3 mt-4 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200">
+                <button onclick="paySubscription()" class="w-full p-3 mt-4 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200">
                     Potvrdiť platbu
                 </button>
             </div>
@@ -237,7 +228,7 @@
                         </div>
                     </div>
                 </div>
-                <button onclick="simulatePayment()" class="w-full p-3 mt-4 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200">
+                <button onclick="paySubscription()" class="w-full p-3 mt-4 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200">
                     Potvrdiť platbu
                 </button>
             </div>
@@ -246,21 +237,23 @@
         </div>
     </div>
 
-
     <script>
         // Prvky DOM
         const chatWindow = document.getElementById('chat-window');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
-        const paymentOverlay = document.getElementById('payment-overlay');
+        const paymentModal = document.getElementById('payment-modal');
+        const paymentMessage = document.getElementById('payment-message');
         const paymentOptions = document.getElementById('payment-options');
         const paysafeForm = document.getElementById('paysafe-form');
         const bankcardForm = document.getElementById('bankcard-form');
 
         // Stavové premenné
         let chatHistory = [];
-        const apiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o"; // API kľúč bude poskytnutý runtime prostredím
+        const apiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o";
         const languagePrompt = "Odpovedaj vždy v slovenskom jazyku.";
+        let isSubscriptionActive = false;
+        let audioInstance = null;
 
         // Funkcia na zobrazenie používateľsky prívetivej chybovej správy
         function showError(message) {
@@ -327,8 +320,21 @@
         
         // Funkcia na prehrávanie textu (TTS)
         async function speakMessage(text, buttonElement) {
-            const messageDiv = buttonElement.parentElement.querySelector('div');
+            // Zastavenie predchádzajúceho zvuku
+            if (audioInstance) {
+                audioInstance.pause();
+                audioInstance.currentTime = 0;
+                // Odstránenie zvýraznenia z predchádzajúcej správy
+                const previousSpeaking = document.querySelector('.speaking-highlight');
+                if (previousSpeaking) {
+                    previousSpeaking.classList.remove('speaking-highlight');
+                }
+            }
+            
+            const messageDiv = buttonElement.previousElementSibling;
+            
             const audio = new Audio();
+            audioInstance = audio; // Uloženie aktuálnej inštancie zvuku
             
             const originalIcon = buttonElement.innerHTML;
             buttonElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
@@ -348,11 +354,11 @@
                             prebuiltVoiceConfig: { voiceName: "Puck" }
                         }
                     }
-                },
-                model: "gemini-2.5-flash-preview-tts"
+                }
             };
+            const modelName = "gemini-2.5-flash-preview-tts";
 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             try {
                 const response = await fetch(apiUrl, {
@@ -381,7 +387,7 @@
                     audio.play();
                 } else {
                     console.error("Audio data is missing or has an incorrect format.", result);
-                    showError("Nastala chyba pri spracovaní zvukovej odpovede. Skúste to znova.");
+                    showError("Nastala chyba pri spracovaní zvukovej odpovede.");
                 }
             } catch (error) {
                 console.error("Chyba pri generovaní reči:", error);
@@ -395,9 +401,14 @@
                 });
             }
         }
-        
+
         // Funkcia na odoslanie správy
         async function sendMessage() {
+            if (!isSubscriptionActive) {
+                showError("Vaše predplatné vypršalo. Prosím, obnovte si ho.");
+                return;
+            }
+
             const userMessage = userInput.value.trim();
             if (!userMessage) return;
 
@@ -438,8 +449,9 @@
                 ...chatHistory
             ];
             const payload = { contents: apiPayloadContents };
+            const modelName = "gemini-2.5-flash-preview-05-20";
 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             try {
                 const response = await fetch(apiUrl, {
@@ -476,7 +488,6 @@
                     chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
                     
                     chatWindow.scrollTop = chatWindow.scrollHeight;
-
                 } else {
                     typingIndicator.remove();
                     const errorDiv = document.createElement('div');
@@ -527,59 +538,134 @@
             }
         }
 
-        // Funkcia na simuláciu platby
-        function simulatePayment() {
-            // Skontrolovať, či sú aspoň nejaké polia vyplnené
-            const paysafeCode = document.getElementById('paysafe-code');
-            const cardNumber = document.getElementById('card-number');
-            const expiryDate = document.getElementById('expiry-date');
-            const cvcCode = document.getElementById('cvc-code');
-
-            if (paysafeForm.classList.contains('active') && paysafeCode.value.trim() === '') {
-                showError("Prosím, zadajte kód PaySafeCard.");
-                return;
+        // Funkcia na simuláciu platby za predplatné
+        function paySubscription() {
+            // Skontrolovať, či sú aspoň nejaké polia vyplnené (jednoduchá validácia)
+            if (paysafeForm.classList.contains('active')) {
+                const paysafeCode = document.getElementById('paysafe-code');
+                if (paysafeCode.value.trim() === '') {
+                    showError("Prosím, zadajte kód PaySafeCard.");
+                    return;
+                }
+            } else if (bankcardForm.classList.contains('active')) {
+                const cardNumber = document.getElementById('card-number');
+                const expiryDate = document.getElementById('expiry-date');
+                const cvcCode = document.getElementById('cvc-code');
+                if (cardNumber.value.trim() === '' || expiryDate.value.trim() === '' || cvcCode.value.trim() === '') {
+                    showError("Prosím, vyplňte všetky údaje o karte.");
+                    return;
+                }
             }
 
-            if (bankcardForm.classList.contains('active') && (cardNumber.value.trim() === '' || expiryDate.value.trim() === '' || cvcCode.value.trim() === '')) {
-                showError("Prosím, vyplňte všetky údaje o karte.");
-                return;
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            // Nastavenie dátumu vypršania predplatného na prvý deň nasledujúceho mesiaca
+            const newLastPaymentDate = new Date(year, month + 1, 1).toISOString();
+            
+            let currentPrice = parseFloat(localStorage.getItem('currentPrice')) || 1.00;
+            const lastPaymentDateStr = localStorage.getItem('lastPaymentDate');
+
+            if (lastPaymentDateStr) {
+                const lastPaymentDate = new Date(lastPaymentDateStr);
+                const today = new Date();
+                const monthsPassed = (today.getFullYear() - lastPaymentDate.getFullYear()) * 12 + (today.getMonth() - lastPaymentDate.getMonth());
+                
+                if (monthsPassed >= 1) {
+                    let newPrice = currentPrice + (2.00 * monthsPassed); // Zmenená cena na 2.00
+                    if (newPrice > 1500) {
+                        newPrice = 1.00; // Reset ceny na 1.00 €
+                    }
+                    currentPrice = newPrice;
+                }
             }
 
-            localStorage.setItem('isPaid', 'true');
-            paymentOverlay.classList.add('hidden');
+            localStorage.setItem('currentPrice', currentPrice.toFixed(2));
+            localStorage.setItem('lastPaymentDate', newLastPaymentDate);
+
+            isSubscriptionActive = true;
+            paymentModal.classList.add('hidden');
             userInput.disabled = false;
             sendButton.disabled = false;
             userInput.focus();
 
-            const welcomeMessage = document.createElement('div');
-            welcomeMessage.className = 'flex items-start my-4';
-            welcomeMessage.innerHTML = `
+            const welcomeMessageDiv = document.createElement('div');
+            welcomeMessageDiv.className = 'flex items-start my-4';
+            welcomeMessageDiv.innerHTML = `
                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
                     <i class="fa-solid fa-robot text-white"></i>
                 </div>
                 <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
-                    <p>Ďakujeme za zakúpenie balíka! Teraz môžete chatovať neobmedzene.</p>
+                    <p>Ďakujeme! Vaše predplatné za ${currentPrice.toFixed(2)} € je teraz aktívne. Môžete začať chatovať.</p>
                 </div>
                 <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
                     <i class="fa-solid fa-volume-high"></i>
                 </button>
             `;
-            chatWindow.appendChild(welcomeMessage);
+            chatWindow.appendChild(welcomeMessageDiv);
             chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+        
+        // Funkcia na kontrolu predplatného a aktualizáciu ceny
+        function checkSubscription() {
+            const lastPaymentDateStr = localStorage.getItem('lastPaymentDate');
+            const currentPrice = parseFloat(localStorage.getItem('currentPrice')) || 1.00;
+
+            if (!lastPaymentDateStr) {
+                isSubscriptionActive = false;
+                paymentModal.classList.remove('hidden');
+                paymentMessage.innerHTML = `Zakúpte si mesačný prístup za **${currentPrice.toFixed(2)} €** a začnite chatovať.`;
+                userInput.disabled = true;
+                sendButton.disabled = true;
+                paymentOptions.classList.remove('hidden');
+                paysafeForm.classList.remove('active');
+                bankcardForm.classList.remove('active');
+            } else {
+                const lastPaymentDate = new Date(lastPaymentDateStr);
+                const today = new Date();
+                const isSubscriptionExpired = today > lastPaymentDate;
+
+                if (isSubscriptionExpired) {
+                    isSubscriptionActive = false;
+                    paymentModal.classList.remove('hidden');
+                    paymentMessage.innerHTML = `Vaše predplatné vypršalo. Obnovte si ho za **${currentPrice.toFixed(2)} €**.`;
+                    userInput.disabled = true;
+                    sendButton.disabled = true;
+                    paymentOptions.classList.remove('hidden');
+                    paysafeForm.classList.remove('active');
+                    bankcardForm.classList.remove('active');
+                } else {
+                    isSubscriptionActive = true;
+                    userInput.disabled = false;
+                    sendButton.disabled = false;
+                    userInput.focus();
+
+                    const welcomeMessageDiv = document.createElement('div');
+                    welcomeMessageDiv.className = 'flex items-start my-4';
+                    welcomeMessageDiv.innerHTML = `
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                            <i class="fa-solid fa-robot text-white"></i>
+                        </div>
+                        <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
+                            <p>Ahoj! Váš mesačný prístup k chatu je aktívny. Aktuálna cena predplatného je ${currentPrice.toFixed(2)} €.</p>
+                        </div>
+                        <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    `;
+                    chatWindow.appendChild(welcomeMessageDiv);
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                }
+            }
         }
 
         // Kontrola pri načítaní stránky
         window.onload = function() {
-            if (localStorage.getItem('isPaid') === 'true') {
-                paymentOverlay.classList.add('hidden');
-                userInput.disabled = false;
-                sendButton.disabled = false;
-                userInput.focus();
-            } else {
-                paymentOverlay.classList.remove('hidden');
-                userInput.disabled = true;
-                sendButton.disabled = true;
-            }
+            // Vymazanie starých dát z lokálneho úložiska, ak existujú.
+            // Dátum vypršania a cenu začneme vždy odznova.
+            localStorage.removeItem('lastPaymentDate');
+            localStorage.removeItem('currentPrice');
+            checkSubscription();
         };
 
         // Event listenery
@@ -592,6 +678,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
