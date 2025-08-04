@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatSlovak AI Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-image: url('https://images.deepai.org/art-image/31cd000b7f3148918f85f76a1b8604f7/ai-495f1e.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #E2E8F0;
+            margin: 0;
+            padding: 0;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+/Edge */
+            user-select: none; /* Standard */
+        }
+        .chat-container {
+            position: relative;
+            z-index: 10;
+        }
+        .chat-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 1.5rem;
+            z-index: -1;
+        }
+        .message-container {
+            max-height: 70vh;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        .message-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .message-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .message-container::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+        .user-message {
+            background-color: rgba(67, 56, 202, 0.7); /* Deep purple */
+            color: white;
+            border-bottom-right-radius: 0;
+        }
+        .ai-message {
+            background-color: rgba(31, 41, 55, 0.7); /* Darker gray */
+            color: #E2E8F0;
+            border-bottom-left-radius: 0;
+        }
+        .dot-flashing {
+            position: relative;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #9880ff;
+            color: #9880ff;
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: 0.5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+        }
+        .dot-flashing::before {
+            left: -15px;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #9880ff;
+            color: #9880ff;
+            animation: dot-flashing 1s infinite alternate;
+            animation-delay: 0s;
+        }
+        .dot-flashing::after {
+            left: 15px;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #9880ff;
+            color: #9880ff;
+            animation: dot-flashing 1s infinite alternate;
+            animation-delay: 1s;
+        }
+        @keyframes dot-flashing {
+            0% { background-color: #9880ff; }
+            50%, 100% { background-color: #eee; }
+        }
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in-up {
+            animation: fade-in-up 0.5s ease-out forwards;
+        }
+        .payment-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 20;
+        }
+        .payment-form {
+            display: none;
+            margin-top: 1.5rem;
+        }
+        .payment-form.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 relative">
+
+    <main class="w-full max-w-3xl flex flex-col h-[90vh] chat-container rounded-3xl p-6 shadow-2xl">
+        
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak AI Pro</h1>
+            <p class="text-sm text-gray-300 mt-2">Váš osobný spoločník s umelou inteligenciou</p>
+        </header>
+
+        <!-- Chat Window -->
+        <div id="chat-window" class="message-container flex-grow mb-4 p-4 space-y-4">
+            <!-- Správy sa budú vkladať sem cez JavaScript -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                    <i class="fa-solid fa-robot text-white"></i>
+                </div>
+                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
+                    <p>Ahoj! Som pripravený na chat. Pre odomknutie chatu je potrebné zakúpiť balík.</p>
+                </div>
+                <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="flex items-center space-x-3 mt-auto">
+            <input type="text" id="user-input" placeholder="Napíšte svoju správu..." class="flex-grow p-4 bg-gray-900/60 text-white placeholder-gray-400 rounded-full border border-gray-700/50 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-200" disabled>
+            <button id="send-button" class="p-4 bg-purple-700 hover:bg-purple-800 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900" disabled>
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- Payment Overlay -->
+    <div id="payment-overlay" class="payment-overlay">
+        <div class="bg-gray-800/90 text-white p-8 rounded-3xl shadow-2xl text-center max-w-sm">
+            <h2 class="text-3xl font-bold mb-4">Odomknite chat</h2>
+            <p class="mb-6 text-gray-300">Zakúpte si balík za **5,77€** pre trvalý prístup k AI chatu.</p>
+            <div id="payment-options" class="space-y-4">
+                <button onclick="showPaymentForm('paysafe')" class="w-full p-3 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200 flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-credit-card text-xl"></i><span>PaySafeCard</span>
+                </button>
+                <button onclick="showPaymentForm('bankcard')" class="w-full p-3 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200 flex items-center justify-center space-x-2">
+                    <i class="fa-brands fa-cc-visa text-xl"></i><span>Bankové karty (Visa, Mastercard...)</span>
+                </button>
+            </div>
+
+            <!-- Formulár pre PaysafeCard -->
+            <div id="paysafe-form" class="payment-form">
+                <div class="text-left">
+                    <label for="paysafe-code" class="block mb-2 text-gray-300">Zadajte kód PaySafeCard</label>
+                    <input type="text" id="paysafe-code" class="w-full p-3 bg-gray-900/60 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="XXXX-XXXX-XXXX-XXXX">
+                </div>
+                <button onclick="simulatePayment()" class="w-full p-3 mt-4 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200">
+                    Potvrdiť platbu
+                </button>
+            </div>
+
+            <!-- Formulár pre bankové karty -->
+            <div id="bankcard-form" class="payment-form">
+                <div class="text-left space-y-4">
+                    <div>
+                        <label for="card-number" class="block mb-2 text-gray-300">Číslo karty</label>
+                        <input type="text" id="card-number" class="w-full p-3 bg-gray-900/60 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="0000 0000 0000 0000">
+                    </div>
+                    <div class="flex space-x-4">
+                        <div class="w-1/2">
+                            <label for="expiry-date" class="block mb-2 text-gray-300">Dátum expirácie</label>
+                            <input type="text" id="expiry-date" class="w-full p-3 bg-gray-900/60 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="MM/RR">
+                        </div>
+                        <div class="w-1/2">
+                            <label for="cvc-code" class="block mb-2 text-gray-300">CVC</label>
+                            <input type="text" id="cvc-code" class="w-full p-3 bg-gray-900/60 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="123">
+                        </div>
+                    </div>
+                </div>
+                <button onclick="simulatePayment()" class="w-full p-3 mt-4 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200">
+                    Potvrdiť platbu
+                </button>
+            </div>
+            
+            <p class="mt-6 text-sm text-gray-400">Tento systém je len demonštrácia, platba neprebehne.</p>
+        </div>
+    </div>
+
+
+    <script>
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const paymentOverlay = document.getElementById('payment-overlay');
+        const paymentOptions = document.getElementById('payment-options');
+        const paysafeForm = document.getElementById('paysafe-form');
+        const bankcardForm = document.getElementById('bankcard-form');
+
+        let chatHistory = [];
+        const apiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o"; // API kľúč bude poskytnutý runtime prostredím
+
+        // Funkcia na zobrazenie používateľsky prívetivej chybovej správy
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'absolute bottom-20 left-1/2 -translate-x-1/2 p-4 bg-red-600 text-white rounded-lg shadow-xl animate-fade-in-up transition-opacity duration-300 z-50';
+            errorDiv.innerText = message;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => {
+                errorDiv.classList.add('opacity-0');
+                errorDiv.addEventListener('transitionend', () => errorDiv.remove());
+            }, 3000);
+        }
+
+        // Pomocné funkcie pre audio
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcmData, sampleRate) {
+            const pcm16 = new Int16Array(pcmData);
+            const buffer = new ArrayBuffer(44 + pcm16.byteLength);
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            const writeString = (str) => {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset++, str.charCodeAt(i));
+                }
+            };
+
+            // RIFF header
+            writeString('RIFF');
+            view.setUint32(offset, 36 + pcm16.byteLength, true); offset += 4;
+            writeString('WAVE');
+
+            // fmt chunk
+            writeString('fmt ');
+            view.setUint32(offset, 16, true); offset += 4; // Chunk size
+            view.setUint16(offset, 1, true); offset += 2; // Audio format (PCM)
+            view.setUint16(offset, 1, true); offset += 2; // Number of channels (mono)
+            view.setUint32(offset, sampleRate, true); offset += 4; // Sample rate
+            view.setUint32(offset, sampleRate * 2, true); offset += 4; // Byte rate
+            view.setUint16(offset, 2, true); offset += 2; // Block align
+            view.setUint16(offset, 16, true); offset += 2; // Bits per sample
+
+            // data chunk
+            writeString('data');
+            view.setUint32(offset, pcm16.byteLength, true); offset += 4;
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true);
+                offset += 2;
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+        
+        async function speakMessage(text, buttonElement) {
+            const prompt = `Hovorte veselým a priateľským hlasom v slovenčine: ${text}`;
+            const payload = {
+                contents: [{
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Puck" }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            const audio = new Audio();
+            
+            const originalIcon = buttonElement.innerHTML;
+            buttonElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+            buttonElement.disabled = true;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    console.error("API call failed with status:", response.status);
+                    showError("Nastala chyba pri volaní API. Skúste to prosím znova.");
+                    return;
+                }
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const wavBlob = pcmToWav(pcmData, sampleRate);
+                    audio.src = URL.createObjectURL(wavBlob);
+                    audio.play();
+                } else {
+                    console.error("Audio data is missing or has an incorrect format.", result);
+                    showError("Nastala chyba pri spracovaní zvukovej odpovede. Skúste to znova.");
+                }
+            } catch (error) {
+                console.error("Chyba pri generovaní reči:", error);
+                showError("Nastala neočakávaná chyba. Skúste to prosím znova.");
+            } finally {
+                buttonElement.innerHTML = originalIcon;
+                buttonElement.disabled = false;
+            }
+        }
+        
+        async function sendMessage() {
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+
+            // Zobrazenie správy od používateľa
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'flex justify-end';
+            userMessageDiv.innerHTML = `
+                <div class="max-w-[80%] bg-purple-700/70 text-white p-3 rounded-2xl rounded-br-none shadow-md">
+                    <p>${userMessage}</p>
+                </div>
+            `;
+            chatWindow.appendChild(userMessageDiv);
+
+            // Pridanie do histórie chatu
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+
+            // Vyčistenie poľa
+            userInput.value = '';
+
+            // Zobrazenie indikátora písania
+            const typingIndicator = document.createElement('div');
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.className = 'flex items-start my-4';
+            typingIndicator.innerHTML = `
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                    <i class="fa-solid fa-robot text-white"></i>
+                </div>
+                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
+                    <div class="dot-flashing"></div>
+                </div>
+            `;
+            chatWindow.appendChild(typingIndicator);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            const payload = { contents: chatHistory };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const aiResponse = result.candidates[0].content.parts[0].text;
+                    
+                    // Odstránenie indikátora
+                    typingIndicator.remove();
+                    
+                    // Zobrazenie odpovede od AI
+                    const aiMessageDiv = document.createElement('div');
+                    aiMessageDiv.className = 'flex items-start my-4';
+                    aiMessageDiv.innerHTML = `
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                            <i class="fa-solid fa-robot text-white"></i>
+                        </div>
+                        <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md whitespace-pre-wrap">
+                            <p>${aiResponse}</p>
+                        </div>
+                        <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    `;
+                    chatWindow.appendChild(aiMessageDiv);
+                    chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+                    
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                } else {
+                    typingIndicator.remove();
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'flex items-start my-4';
+                    errorDiv.innerHTML = `
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                            <i class="fa-solid fa-robot text-white"></i>
+                        </div>
+                        <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
+                            <p>Nastala chyba pri generovaní odpovede.</p>
+                        </div>
+                    `;
+                    chatWindow.appendChild(errorDiv);
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                }
+            } catch (error) {
+                console.error("Chyba pri volaní API:", error);
+                
+                // Odstránenie indikátora
+                const typingIndicatorElement = document.getElementById('typing-indicator');
+                if (typingIndicatorElement) {
+                    typingIndicatorElement.remove();
+                }
+
+                // Zobrazenie chybovej správy
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'flex items-start my-4';
+                errorDiv.innerHTML = `
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                        <i class="fa-solid fa-robot text-white"></i>
+                    </div>
+                    <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
+                        <p>Nastala chyba pri volaní API. Skúste to znova.</p>
+                    </div>
+                `;
+                chatWindow.appendChild(errorDiv);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        }
+
+        // Funkcia na zobrazenie konkrétneho platobného formulára
+        function showPaymentForm(method) {
+            paymentOptions.classList.add('hidden');
+            if (method === 'paysafe') {
+                paysafeForm.classList.add('active');
+            } else if (method === 'bankcard') {
+                bankcardForm.classList.add('active');
+            }
+        }
+
+        // Funkcia na simuláciu platby
+        function simulatePayment() {
+            // Skontrolovať, či sú aspoň nejaké polia vyplnené
+            const paysafeCode = document.getElementById('paysafe-code');
+            const cardNumber = document.getElementById('card-number');
+            const expiryDate = document.getElementById('expiry-date');
+            const cvcCode = document.getElementById('cvc-code');
+
+            if (paysafeForm.classList.contains('active') && paysafeCode.value.trim() === '') {
+                showError("Prosím, zadajte kód PaySafeCard.");
+                return;
+            }
+
+            if (bankcardForm.classList.contains('active') && (cardNumber.value.trim() === '' || expiryDate.value.trim() === '' || cvcCode.value.trim() === '')) {
+                showError("Prosím, vyplňte všetky údaje o karte.");
+                return;
+            }
+
+            localStorage.setItem('isPaid', 'true');
+            paymentOverlay.classList.add('hidden');
+            userInput.disabled = false;
+            sendButton.disabled = false;
+            userInput.focus();
+
+            const welcomeMessage = document.createElement('div');
+            welcomeMessage.className = 'flex items-start my-4';
+            welcomeMessage.innerHTML = `
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                    <i class="fa-solid fa-robot text-white"></i>
+                </div>
+                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
+                    <p>Ďakujeme za zakúpenie balíka! Teraz môžete chatovať neobmedzene.</p>
+                </div>
+                <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            `;
+            chatWindow.appendChild(welcomeMessage);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // Kontrola pri načítaní stránky
+        window.onload = function() {
+            if (localStorage.getItem('isPaid') === 'true') {
+                paymentOverlay.classList.add('hidden');
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.focus();
+            } else {
+                paymentOverlay.classList.remove('hidden');
+                userInput.disabled = true;
+                sendButton.disabled = true;
+            }
+        };
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !userInput.disabled) {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
