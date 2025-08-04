@@ -250,7 +250,8 @@
 
         // Stavové premenné
         let chatHistory = [];
-        const apiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o";
+        // Poznámka: API kľúč je poskytnutý prostredím Canvas, preto je ponechaný prázdny.
+        const apiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o"; 
         const languagePrompt = "Odpovedaj vždy v slovenskom jazyku.";
         let isSubscriptionActive = false;
         let audioInstance = null;
@@ -406,7 +407,6 @@
                     responseModalities: ["AUDIO"],
                     speechConfig: {
                         voiceConfig: {
-                            // Hlas bol zmenený na "Puck"
                             prebuiltVoiceConfig: { voiceName: "Puck" }
                         }
                     }
@@ -448,11 +448,11 @@
                     }
                 } else {
                     console.error("Audio dáta chýbajú alebo majú nesprávny formát.", result);
-                    showError("Nastala chyba pri spracovaní zvukovej odpovede.");
+                    showError("Chyba: Zvuková odpoveď od AI je neplatná. Skúste to znova.");
                 }
             } catch (error) {
                 console.error("Chyba pri generovaní hlasu:", error);
-                showError("Nastala neočakávaná chyba. Skúste to prosím znova.");
+                showError(`Chyba pri generovaní hlasu: ${error.message}`);
             } finally {
                 audio.addEventListener('ended', () => {
                     messageElement.classList.remove('speaking-highlight');
@@ -539,6 +539,8 @@
                     
                 } else {
                     typingIndicator.remove();
+                    showError("AI neposkytla platnú odpoveď. Skúste to znova.");
+                    // Vytvorí aj správu v chate, aby bol záznam o chybe
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'flex items-start my-4';
                     errorDiv.innerHTML = `
@@ -546,7 +548,7 @@
                             <i class="fa-solid fa-robot text-white"></i>
                         </div>
                         <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
-                            <p>Nastala chyba pri generovaní odpovede. Skúste to znova.</p>
+                            <p>AI neposkytla platnú odpoveď. Skúste to znova.</p>
                         </div>
                     `;
                     chatWindow.appendChild(errorDiv);
@@ -560,6 +562,8 @@
                     typingIndicatorElement.remove();
                 }
 
+                showError(`Nastala neočakávaná chyba: ${error.message}`);
+                // Vytvorí aj správu v chate, aby bol záznam o chybe
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'flex items-start my-4';
                 errorDiv.innerHTML = `
@@ -567,7 +571,7 @@
                         <i class="fa-solid fa-robot text-white"></i>
                     </div>
                     <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
-                        <p>${error.message}</p>
+                        <p>Nastala neočakávaná chyba: ${error.message}</p>
                     </div>
                 `;
                 chatWindow.appendChild(errorDiv);
