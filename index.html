@@ -448,11 +448,11 @@
                     }
                 } else {
                     console.error("Audio dáta chýbajú alebo majú nesprávny formát.", result);
-                    showError("Chyba: Zvuková odpoveď od AI je neplatná. Skúste to znova.");
+                    showError("Chyba API: Zvuková odpoveď od AI je neplatná. Skúste to znova.");
                 }
             } catch (error) {
                 console.error("Chyba pri generovaní hlasu:", error);
-                showError(`Chyba pri generovaní hlasu: ${error.message}`);
+                showError(`Chyba API: ${error.message}`);
             } finally {
                 audio.addEventListener('ended', () => {
                     messageElement.classList.remove('speaking-highlight');
@@ -539,7 +539,7 @@
                     
                 } else {
                     typingIndicator.remove();
-                    showError("AI neposkytla platnú odpoveď. Skúste to znova.");
+                    showError("Chyba API: AI neposkytla platnú odpoveď. Skúste to znova.");
                     // Vytvorí aj správu v chate, aby bol záznam o chybe
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'flex items-start my-4';
@@ -548,7 +548,7 @@
                             <i class="fa-solid fa-robot text-white"></i>
                         </div>
                         <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
-                            <p>AI neposkytla platnú odpoveď. Skúste to znova.</p>
+                            <p>Chyba API: AI neposkytla platnú odpoveď. Skúste to znova.</p>
                         </div>
                     `;
                     chatWindow.appendChild(errorDiv);
@@ -562,7 +562,7 @@
                     typingIndicatorElement.remove();
                 }
 
-                showError(`Nastala neočakávaná chyba: ${error.message}`);
+                showError(`Chyba API: ${error.message}`);
                 // Vytvorí aj správu v chate, aby bol záznam o chybe
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'flex items-start my-4';
@@ -571,7 +571,7 @@
                         <i class="fa-solid fa-robot text-white"></i>
                     </div>
                     <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
-                        <p>Nastala neočakávaná chyba: ${error.message}</p>
+                        <p>Chyba API: ${error.message}</p>
                     </div>
                 `;
                 chatWindow.appendChild(errorDiv);
