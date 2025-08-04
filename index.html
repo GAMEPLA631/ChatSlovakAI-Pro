@@ -9,7 +9,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* Základný štýl tela stránky a pozadia */
+        /* Basic body and background styling */
         body {
             font-family: 'Inter', sans-serif;
             background-image: url('https://images.deepai.org/art-image/31cd000b7f3148918f85f76a1b8604f7/ai-495f1e.jpg');
@@ -25,7 +25,7 @@
             user-select: none; /* Standard */
         }
         
-        /* Kontajner chatu s rozostreným pozadím */
+        /* Chat container with a blurred background */
         .chat-container {
             position: relative;
             z-index: 10;
@@ -43,7 +43,7 @@
             z-index: -1;
         }
         
-        /* Kontajner správ s posúvaním */
+        /* Scrollable message container */
         .message-container {
             max-height: 70vh;
             overflow-y: auto;
@@ -61,7 +61,7 @@
             border-radius: 10px;
         }
         
-        /* Rôzne štýly pre správy od používateľa a AI */
+        /* Different styles for user and AI messages */
         .user-message {
             background-color: rgba(67, 56, 202, 0.7); /* Deep purple */
             color: white;
@@ -73,13 +73,13 @@
             border-bottom-left-radius: 0;
         }
 
-        /* Animácia pre zvýraznenie práve čítanej správy */
+        /* Animation for highlighting the currently spoken message */
         .speaking-highlight {
             transition: background-color 0.3s ease-in-out;
-            background-color: rgba(100, 116, 139, 0.8) !important; /* Šedá farba */
+            background-color: rgba(100, 116, 139, 0.8) !important; /* Slate gray */
         }
         
-        /* Animácia troch bodiek (indikátor písania) */
+        /* Animation for the three dots (typing indicator) */
         .dot-flashing {
             position: relative;
             width: 10px;
@@ -121,7 +121,7 @@
             50%, 100% { background-color: #eee; }
         }
         
-        /* Animácia pre vysúvanie chybových správ */
+        /* Animation for sliding up error messages */
         @keyframes fade-in-up {
             from {
                 opacity: 0;
@@ -136,7 +136,7 @@
             animation: fade-in-up 0.5s ease-out forwards;
         }
         
-        /* Štýly pre modal platby */
+        /* Styles for the payment modal */
         .payment-modal {
             position: absolute;
             top: 0;
@@ -163,18 +163,18 @@
 
     <main class="w-full max-w-3xl flex flex-col h-[90vh] chat-container rounded-3xl p-6 shadow-2xl">
         
-        <!-- Hlavička chatu -->
+        <!-- Chat header -->
         <header class="text-center mb-6">
             <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak AI Pro</h1>
             <p class="text-sm text-gray-300 mt-2">Váš osobný spoločník s umelou inteligenciou</p>
         </header>
 
-        <!-- Okno chatu pre zobrazenie správ -->
+        <!-- Chat window for displaying messages -->
         <div id="chat-window" class="message-container flex-grow mb-4 p-4 space-y-4">
-            <!-- Správy sa budú vkladať sem cez JavaScript -->
+            <!-- Messages will be injected here by JavaScript -->
         </div>
 
-        <!-- Vstupná oblasť pre písanie správ -->
+        <!-- Input area for typing messages -->
         <div class="flex items-center space-x-3 mt-auto">
             <input type="text" id="user-input" placeholder="Napíšte svoju správu..." class="flex-grow p-4 bg-gray-900/60 text-white placeholder-gray-400 rounded-full border border-gray-700/50 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-200" disabled>
             <button id="send-button" class="p-4 bg-purple-700 hover:bg-purple-800 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900" disabled>
@@ -183,13 +183,13 @@
         </div>
     </main>
 
-    <!-- Modal pre platbu (zobrazí sa len v prípade potreby) -->
+    <!-- Payment modal (shown only when needed) -->
     <div id="payment-modal" class="payment-modal hidden">
         <div class="bg-gray-800/90 text-white p-8 rounded-3xl shadow-2xl text-center max-w-sm">
             <h2 class="text-3xl font-bold mb-4">Obnovte si predplatné</h2>
             <p id="payment-message" class="mb-6 text-gray-300"></p>
             
-            <!-- Možnosti platby -->
+            <!-- Payment options -->
             <div id="payment-options" class="space-y-4">
                 <button onclick="showPaymentForm('paysafe')" class="w-full p-3 bg-purple-700 hover:bg-purple-800 rounded-xl shadow-lg transition-colors duration-200 flex items-center justify-center space-x-2">
                     <i class="fa-solid fa-credit-card text-xl"></i><span>PaySafeCard</span>
@@ -199,7 +199,7 @@
                 </button>
             </div>
 
-            <!-- Formulár pre PaysafeCard -->
+            <!-- PaysafeCard form -->
             <div id="paysafe-form" class="payment-form">
                 <div class="text-left">
                     <label for="paysafe-code" class="block mb-2 text-gray-300">Zadajte kód PaySafeCard</label>
@@ -210,7 +210,7 @@
                 </button>
             </div>
 
-            <!-- Formulár pre bankové karty -->
+            <!-- Bank card form -->
             <div id="bankcard-form" class="payment-form">
                 <div class="text-left space-y-4">
                     <div>
@@ -238,7 +238,7 @@
     </div>
 
     <script>
-        // Prvky DOM
+        // DOM elements
         const chatWindow = document.getElementById('chat-window');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
@@ -248,14 +248,14 @@
         const paysafeForm = document.getElementById('paysafe-form');
         const bankcardForm = document.getElementById('bankcard-form');
 
-        // Stavové premenné
+        // State variables
         let chatHistory = [];
         const apiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o";
         const languagePrompt = "Odpovedaj vždy v slovenskom jazyku.";
         let isSubscriptionActive = false;
         let audioInstance = null;
 
-        // Funkcia na zobrazenie používateľsky prívetivej chybovej správy
+        // Function to show a user-friendly error message
         function showError(message) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'absolute bottom-20 left-1/2 -translate-x-1/2 p-4 bg-red-600 text-white rounded-lg shadow-xl animate-fade-in-up transition-opacity duration-300 z-50';
@@ -267,8 +267,8 @@
             }, 3000);
         }
 
-        // --- Pomocné funkcie pre generovanie zvuku (TTS) ---
-        // Konvertuje base64 reťazec na ArrayBuffer
+        // --- Helper functions for TTS audio generation ---
+        // Converts a base64 string to an ArrayBuffer
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -279,7 +279,7 @@
             return bytes.buffer;
         }
 
-        // Konvertuje PCM audio na formát WAV
+        // Converts PCM audio to WAV format
         function pcmToWav(pcmData, sampleRate) {
             const pcm16 = new Int16Array(pcmData);
             const buffer = new ArrayBuffer(44 + pcm16.byteLength);
@@ -292,20 +292,20 @@
                 }
             };
 
-            // RIFF hlavička
+            // RIFF header
             writeString('RIFF');
             view.setUint32(offset, 36 + pcm16.byteLength, true); offset += 4;
             writeString('WAVE');
 
             // fmt chunk
             writeString('fmt ');
-            view.setUint32(offset, 16, true); offset += 4; // Veľkosť bloku
-            view.setUint16(offset, 1, true); offset += 2; // Formát zvuku (PCM)
-            view.setUint16(offset, 1, true); offset += 2; // Počet kanálov (mono)
-            view.setUint32(offset, sampleRate, true); offset += 4; // Vzorkovacia frekvencia
-            view.setUint32(offset, sampleRate * 2, true); offset += 4; // Dátový tok (Byte rate)
-            view.setUint16(offset, 2, true); offset += 2; // Zarovnanie bloku
-            view.setUint16(offset, 16, true); offset += 2; // Bity na vzorku
+            view.setUint32(offset, 16, true); offset += 4; // Block size
+            view.setUint16(offset, 1, true); offset += 2; // Audio format (PCM)
+            view.setUint16(offset, 1, true); offset += 2; // Number of channels (mono)
+            view.setUint32(offset, sampleRate, true); offset += 4; // Sample rate
+            view.setUint32(offset, sampleRate * 2, true); offset += 4; // Byte rate
+            view.setUint16(offset, 2, true); offset += 2; // Block alignment
+            view.setUint16(offset, 16, true); offset += 2; // Bits per sample
 
             // data chunk
             writeString('data');
@@ -318,8 +318,9 @@
             return new Blob([view], { type: 'audio/wav' });
         }
         
-        // Funkcia na prehrávanie textu (TTS) s ošetrením chýb
-        async function speakMessage(text, buttonElement) {
+        // Function to play text (TTS) with error handling
+        async function speakMessage(text, messageElement) {
+            // Stop any currently playing audio
             if (audioInstance) {
                 audioInstance.pause();
                 audioInstance.currentTime = 0;
@@ -329,16 +330,12 @@
                 }
             }
             
-            const messageDiv = buttonElement.previousElementSibling;
-            
             const audio = new Audio();
             audioInstance = audio;
             
-            const originalIcon = buttonElement.innerHTML;
-            buttonElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
-            buttonElement.disabled = true;
-            messageDiv.classList.add('speaking-highlight');
-
+            // Highlight the message being spoken
+            messageElement.classList.add('speaking-highlight');
+            
             const prompt = `Hovorte veselým a priateľským hlasom v slovenčine: ${text}`;
             const payload = {
                 contents: [{
@@ -379,11 +376,9 @@
                         throw new Error(`API call failed with status: ${response.status}`);
                     }
                 } catch (error) {
-                    console.error("Chyba siete pri volaní API:", error);
+                    console.error("Network error during API call:", error);
                     showError("Nastala chyba siete. Skúste to prosím znova.");
-                    buttonElement.innerHTML = originalIcon;
-                    buttonElement.disabled = false;
-                    messageDiv.classList.remove('speaking-highlight');
+                    messageElement.classList.remove('speaking-highlight');
                     return;
                 }
             }
@@ -391,9 +386,7 @@
             if (!response || !response.ok) {
                 console.error("API call failed after multiple retries.");
                 showError("Volanie API zlyhalo po opakovaných pokusoch.");
-                buttonElement.innerHTML = originalIcon;
-                buttonElement.disabled = false;
-                messageDiv.classList.remove('speaking-highlight');
+                messageElement.classList.remove('speaking-highlight');
                 return;
             }
 
@@ -409,24 +402,41 @@
                     const pcmData = base64ToArrayBuffer(audioData);
                     const wavBlob = pcmToWav(pcmData, sampleRate);
                     audio.src = URL.createObjectURL(wavBlob);
-                    audio.play();
+                    
+                    // Try to play the audio automatically
+                    try {
+                        await audio.play();
+                    } catch (playError) {
+                        // This block handles cases where autoplay is blocked by the browser (e.g., on mobile)
+                        console.log("Autoplay was prevented. User interaction is required.");
+                        showError("Prehrávanie zvuku bolo zablokované. Kliknite na správu pre spustenie.");
+                        
+                        // Add a play button to the message
+                        const playButton = document.createElement('button');
+                        playButton.className = 'ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none';
+                        playButton.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
+                        playButton.onclick = () => {
+                            audio.play();
+                            playButton.remove(); // Remove the button after it's clicked
+                        };
+                        messageElement.parentElement.appendChild(playButton);
+                        messageElement.classList.remove('speaking-highlight');
+                    }
                 } else {
                     console.error("Audio data is missing or has an incorrect format.", result);
                     showError("Nastala chyba pri spracovaní zvukovej odpovede.");
                 }
             } catch (error) {
-                console.error("Chyba pri spracovaní JSON alebo generovaní reči:", error);
+                console.error("Error processing JSON or generating speech:", error);
                 showError("Nastala neočakávaná chyba. Skúste to prosím znova.");
             } finally {
-                buttonElement.innerHTML = originalIcon;
-                buttonElement.disabled = false;
                 audio.addEventListener('ended', () => {
-                    messageDiv.classList.remove('speaking-highlight');
+                    messageElement.classList.remove('speaking-highlight');
                 });
             }
         }
 
-        // Funkcia na odoslanie správy
+        // Function to send a message
         async function sendMessage() {
             if (!isSubscriptionActive) {
                 showError("Vaše predplatné vypršalo. Prosím, obnovte si ho.");
@@ -489,21 +499,26 @@
                     
                     const aiMessageDiv = document.createElement('div');
                     aiMessageDiv.className = 'flex items-start my-4';
+                    
+                    const messageBubble = document.createElement('div');
+                    messageBubble.className = 'max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md whitespace-pre-wrap';
+                    messageBubble.innerHTML = `<p>${aiResponse}</p>`;
+
                     aiMessageDiv.innerHTML = `
                         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
                             <i class="fa-solid fa-robot text-white"></i>
                         </div>
-                        <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md whitespace-pre-wrap">
-                            <p>${aiResponse}</p>
-                        </div>
-                        <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
-                            <i class="fa-solid fa-volume-high"></i>
-                        </button>
                     `;
+                    aiMessageDiv.appendChild(messageBubble);
+                    
                     chatWindow.appendChild(aiMessageDiv);
                     chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
                     
                     chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                    // Automatically play the AI response
+                    speakMessage(aiResponse, messageBubble);
+                    
                 } else {
                     typingIndicator.remove();
                     const errorDiv = document.createElement('div');
@@ -542,7 +557,7 @@
             }
         }
 
-        // Funkcia na zobrazenie konkrétneho platobného formulára
+        // Function to show a specific payment form
         function showPaymentForm(method) {
             paymentOptions.classList.add('hidden');
             if (method === 'paysafe') {
@@ -552,7 +567,7 @@
             }
         }
 
-        // Funkcia na simuláciu platby za predplatné
+        // Function to simulate subscription payment
         function paySubscription() {
             if (paysafeForm.classList.contains('active')) {
                 const paysafeCode = document.getElementById('paysafe-code');
@@ -570,22 +585,17 @@
                 }
             }
             
-            // Logika zvyšovania a resetu ceny
             let currentPrice = parseFloat(localStorage.getItem('currentPrice')) || 1.00;
             const lastPaymentDateStr = localStorage.getItem('lastPaymentDate');
             if (lastPaymentDateStr) {
-                 // Zvýšenie ceny o 2 €
                 currentPrice += 2.00;
-                 // Reset ceny, ak presiahne 1500 €
                 if (currentPrice > 1500) {
                     currentPrice = 1.00;
                 }
             } else {
-                 // Prvá platba, cena ostáva 1 €
                 currentPrice = 1.00;
             }
 
-            // Nastavenie dátumu exspirácie na 30 dní od aktuálneho momentu
             const newExpirationDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
             
             localStorage.setItem('currentPrice', currentPrice.toFixed(2));
@@ -599,22 +609,25 @@
 
             const welcomeMessageDiv = document.createElement('div');
             welcomeMessageDiv.className = 'flex items-start my-4';
+            
+            const messageBubble = document.createElement('div');
+            messageBubble.className = 'max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md';
+            messageBubble.innerHTML = `<p>Ďakujeme! Vaše predplatné za ${currentPrice.toFixed(2)} € je teraz aktívne na 30 dní. Môžete začať chatovať.</p>`;
+
             welcomeMessageDiv.innerHTML = `
                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
                     <i class="fa-solid fa-robot text-white"></i>
                 </div>
-                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
-                    <p>Ďakujeme! Vaše predplatné za ${currentPrice.toFixed(2)} € je teraz aktívne na 30 dní. Môžete začať chatovať.</p>
-                </div>
-                <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
-                    <i class="fa-solid fa-volume-high"></i>
-                </button>
             `;
+            welcomeMessageDiv.appendChild(messageBubble);
+
             chatWindow.appendChild(welcomeMessageDiv);
             chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            speakMessage(messageBubble.innerText, messageBubble);
         }
         
-        // Funkcia na kontrolu predplatného
+        // Function to check subscription status
         function checkSubscription() {
             const lastPaymentDateStr = localStorage.getItem('lastPaymentDate');
             let currentPrice = parseFloat(localStorage.getItem('currentPrice')) || 1.00;
@@ -651,29 +664,32 @@
 
                     const welcomeMessageDiv = document.createElement('div');
                     welcomeMessageDiv.className = 'flex items-start my-4';
+                    
+                    const messageBubble = document.createElement('div');
+                    messageBubble.className = 'max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md';
+                    messageBubble.innerHTML = `<p>Ahoj! Váš prístup k chatu je aktívny do ${lastPaymentDate.toLocaleDateString('sk-SK')}. Aktuálna cena predplatného je ${currentPrice.toFixed(2)} €.</p>`;
+
                     welcomeMessageDiv.innerHTML = `
                         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
                             <i class="fa-solid fa-robot text-white"></i>
                         </div>
-                        <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
-                            <p>Ahoj! Váš prístup k chatu je aktívny do ${lastPaymentDate.toLocaleDateString('sk-SK')}. Aktuálna cena predplatného je ${currentPrice.toFixed(2)} €.</p>
-                        </div>
-                        <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
-                            <i class="fa-solid fa-volume-high"></i>
-                        </button>
                     `;
+                    welcomeMessageDiv.appendChild(messageBubble);
+
                     chatWindow.appendChild(welcomeMessageDiv);
                     chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                    speakMessage(messageBubble.innerText, messageBubble);
                 }
             }
         }
 
-        // Kontrola pri načítaní stránky
+        // Run on page load
         window.onload = function() {
             checkSubscription();
         };
 
-        // Event listenery
+        // Event listeners
         sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !userInput.disabled) {
@@ -683,6 +699,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
