@@ -255,7 +255,10 @@
         let isSubscriptionActive = false;
         let audioInstance = null;
 
-        // Funkcia na zobrazenie používateľsky prívetivej chybovej správy
+        /**
+         * Funkcia na zobrazenie používateľsky prívetivej chybovej správy v dolnej časti obrazovky.
+         * @param {string} message Text správy.
+         */
         function showError(message) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'absolute bottom-20 left-1/2 -translate-x-1/2 p-4 bg-red-600 text-white rounded-lg shadow-xl animate-fade-in-up transition-opacity duration-300 z-50';
@@ -313,7 +316,11 @@
         }
 
         // --- Pomocné funkcie pre generovanie zvuku (TTS) ---
-        // Konvertuje base64 reťazec na ArrayBuffer
+        /**
+         * Konvertuje base64 reťazec na ArrayBuffer.
+         * @param {string} base64 Reťazec v base64 formáte.
+         * @returns {ArrayBuffer} Dekódované binárne dáta.
+         */
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -324,7 +331,12 @@
             return bytes.buffer;
         }
 
-        // Konvertuje PCM audio na formát WAV
+        /**
+         * Konvertuje surové PCM audio na formát WAV.
+         * @param {ArrayBuffer} pcmData Surové PCM dáta.
+         * @param {number} sampleRate Vzorkovacia frekvencia.
+         * @returns {Blob} Audio blob vo formáte WAV.
+         */
         function pcmToWav(pcmData, sampleRate) {
             const pcm16 = new Int16Array(pcmData);
             const buffer = new ArrayBuffer(44 + pcm16.byteLength);
@@ -363,7 +375,11 @@
             return new Blob([view], { type: 'audio/wav' });
         }
         
-        // Funkcia na prehrávanie textu (TTS) s ošetrením chýb
+        /**
+         * Funkcia na prehrávanie textu (TTS) s ošetrením chýb.
+         * @param {string} text Text, ktorý sa má prehrať.
+         * @param {HTMLElement} messageElement Element správy, ktorý sa má zvýrazniť.
+         */
         async function speakMessage(text, messageElement) {
             // Zastaví akýkoľvek práve prehrávaný zvuk
             if (audioInstance) {
@@ -394,7 +410,8 @@
                             prebuiltVoiceConfig: { voiceName: "Puck" }
                         }
                     }
-                }
+                },
+                model: "gemini-2.5-flash-preview-tts"
             };
             const modelName = "gemini-2.5-flash-preview-tts";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -679,27 +696,25 @@
 
                     chatWindow.appendChild(welcomeMessageDiv);
                     chatWindow.scrollTop = chatWindow.scrollHeight;
-
-                    speakMessage(messageBubble.innerText, messageBubble);
                 }
             }
         }
 
-        // Spustenie pri načítaní stránky
-        window.onload = function() {
-            checkSubscription();
-        };
-
-        // Event listenery
+        // Spracovanie stlačenia klávesu "Enter" a tlačidla "Odoslať"
         sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !userInput.disabled) {
+        userInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
                 sendMessage();
             }
         });
+
+        // Spustenie pri načítaní stránky
+        window.onload = checkSubscription;
     </script>
 </body>
 </html>
+
+
 
 
 
