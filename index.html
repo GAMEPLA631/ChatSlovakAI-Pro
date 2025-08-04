@@ -318,13 +318,11 @@
             return new Blob([view], { type: 'audio/wav' });
         }
         
-        // Funkcia na prehrávanie textu (TTS)
+        // Funkcia na prehrávanie textu (TTS) s ošetrením chýb
         async function speakMessage(text, buttonElement) {
-            // Zastavenie predchádzajúceho zvuku
             if (audioInstance) {
                 audioInstance.pause();
                 audioInstance.currentTime = 0;
-                // Odstránenie zvýraznenia z predchádzajúcej správy
                 const previousSpeaking = document.querySelector('.speaking-highlight');
                 if (previousSpeaking) {
                     previousSpeaking.classList.remove('speaking-highlight');
@@ -334,14 +332,13 @@
             const messageDiv = buttonElement.previousElementSibling;
             
             const audio = new Audio();
-            audioInstance = audio; // Uloženie aktuálnej inštancie zvuku
+            audioInstance = audio;
             
             const originalIcon = buttonElement.innerHTML;
             buttonElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
             buttonElement.disabled = true;
             messageDiv.classList.add('speaking-highlight');
 
-            // Pokyn pre AI, aby hovorila slovensky
             const prompt = `Hovorte veselým a priateľským hlasom v slovenčine: ${text}`;
             const payload = {
                 contents: [{
@@ -359,20 +356,48 @@
             const modelName = "gemini-2.5-flash-preview-tts";
 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            
+            let retryCount = 0;
+            const maxRetries = 3;
+            let response;
 
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+            while (retryCount < maxRetries) {
+                try {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-                if (!response.ok) {
-                    console.error("API call failed with status:", response.status);
-                    showError("Nastala chyba pri volaní API. Skúste to prosím znova.");
+                    if (response.ok) {
+                        break;
+                    } else if (response.status === 429) {
+                        const delay = Math.pow(2, retryCount) * 1000;
+                        await new Promise(res => setTimeout(res, delay));
+                        retryCount++;
+                    } else {
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error("Chyba siete pri volaní API:", error);
+                    showError("Nastala chyba siete. Skúste to prosím znova.");
+                    buttonElement.innerHTML = originalIcon;
+                    buttonElement.disabled = false;
+                    messageDiv.classList.remove('speaking-highlight');
                     return;
                 }
+            }
+            
+            if (!response || !response.ok) {
+                console.error("API call failed after multiple retries.");
+                showError("Volanie API zlyhalo po opakovaných pokusoch.");
+                buttonElement.innerHTML = originalIcon;
+                buttonElement.disabled = false;
+                messageDiv.classList.remove('speaking-highlight');
+                return;
+            }
 
+            try {
                 const result = await response.json();
                 const part = result?.candidates?.[0]?.content?.parts?.[0];
                 const audioData = part?.inlineData?.data;
@@ -390,12 +415,11 @@
                     showError("Nastala chyba pri spracovaní zvukovej odpovede.");
                 }
             } catch (error) {
-                console.error("Chyba pri generovaní reči:", error);
+                console.error("Chyba pri spracovaní JSON alebo generovaní reči:", error);
                 showError("Nastala neočakávaná chyba. Skúste to prosím znova.");
             } finally {
                 buttonElement.innerHTML = originalIcon;
                 buttonElement.disabled = false;
-                // Odstráni zvýraznenie po skončení prehrávania
                 audio.addEventListener('ended', () => {
                     messageDiv.classList.remove('speaking-highlight');
                 });
@@ -412,7 +436,6 @@
             const userMessage = userInput.value.trim();
             if (!userMessage) return;
 
-            // Zobrazenie správy od používateľa
             const userMessageDiv = document.createElement('div');
             userMessageDiv.className = 'flex justify-end';
             userMessageDiv.innerHTML = `
@@ -422,13 +445,9 @@
             `;
             chatWindow.appendChild(userMessageDiv);
 
-            // Pridanie do histórie chatu
             chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
-
-            // Vyčistenie poľa
             userInput.value = '';
 
-            // Zobrazenie indikátora písania
             const typingIndicator = document.createElement('div');
             typingIndicator.id = 'typing-indicator';
             typingIndicator.className = 'flex items-start my-4';
@@ -443,7 +462,6 @@
             chatWindow.appendChild(typingIndicator);
             chatWindow.scrollTop = chatWindow.scrollHeight;
 
-            // Vytvorenie payloadu s inštrukciou pre model
             const apiPayloadContents = [
                 { role: "user", parts: [{ text: languagePrompt }] },
                 ...chatHistory
@@ -467,10 +485,8 @@
                     result.candidates[0].content.parts.length > 0) {
                     const aiResponse = result.candidates[0].content.parts[0].text;
                     
-                    // Odstránenie indikátora
                     typingIndicator.remove();
                     
-                    // Zobrazenie odpovede od AI
                     const aiMessageDiv = document.createElement('div');
                     aiMessageDiv.className = 'flex items-start my-4';
                     aiMessageDiv.innerHTML = `
@@ -506,13 +522,11 @@
             } catch (error) {
                 console.error("Chyba pri volaní API:", error);
                 
-                // Odstránenie indikátora
                 const typingIndicatorElement = document.getElementById('typing-indicator');
                 if (typingIndicatorElement) {
                     typingIndicatorElement.remove();
                 }
 
-                // Zobrazenie chybovej správy
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'flex items-start my-4';
                 errorDiv.innerHTML = `
@@ -540,7 +554,6 @@
 
         // Funkcia na simuláciu platby za predplatné
         function paySubscription() {
-            // Skontrolovať, či sú aspoň nejaké polia vyplnené (jednoduchá validácia)
             if (paysafeForm.classList.contains('active')) {
                 const paysafeCode = document.getElementById('paysafe-code');
                 if (paysafeCode.value.trim() === '') {
@@ -556,32 +569,27 @@
                     return;
                 }
             }
-
-            const date = new Date();
-            const year = date.getFullYear();
-            const month = date.getMonth();
-            // Nastavenie dátumu vypršania predplatného na prvý deň nasledujúceho mesiaca
-            const newLastPaymentDate = new Date(year, month + 1, 1).toISOString();
             
+            // Logika zvyšovania a resetu ceny
             let currentPrice = parseFloat(localStorage.getItem('currentPrice')) || 1.00;
             const lastPaymentDateStr = localStorage.getItem('lastPaymentDate');
-
             if (lastPaymentDateStr) {
-                const lastPaymentDate = new Date(lastPaymentDateStr);
-                const today = new Date();
-                const monthsPassed = (today.getFullYear() - lastPaymentDate.getFullYear()) * 12 + (today.getMonth() - lastPaymentDate.getMonth());
-                
-                if (monthsPassed >= 1) {
-                    let newPrice = currentPrice + (2.00 * monthsPassed); // Zmenená cena na 2.00
-                    if (newPrice > 1500) {
-                        newPrice = 1.00; // Reset ceny na 1.00 €
-                    }
-                    currentPrice = newPrice;
+                 // Zvýšenie ceny o 2 €
+                currentPrice += 2.00;
+                 // Reset ceny, ak presiahne 1500 €
+                if (currentPrice > 1500) {
+                    currentPrice = 1.00;
                 }
+            } else {
+                 // Prvá platba, cena ostáva 1 €
+                currentPrice = 1.00;
             }
 
+            // Nastavenie dátumu exspirácie na 30 dní od aktuálneho momentu
+            const newExpirationDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            
             localStorage.setItem('currentPrice', currentPrice.toFixed(2));
-            localStorage.setItem('lastPaymentDate', newLastPaymentDate);
+            localStorage.setItem('lastPaymentDate', newExpirationDate);
 
             isSubscriptionActive = true;
             paymentModal.classList.add('hidden');
@@ -596,7 +604,7 @@
                     <i class="fa-solid fa-robot text-white"></i>
                 </div>
                 <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
-                    <p>Ďakujeme! Vaše predplatné za ${currentPrice.toFixed(2)} € je teraz aktívne. Môžete začať chatovať.</p>
+                    <p>Ďakujeme! Vaše predplatné za ${currentPrice.toFixed(2)} € je teraz aktívne na 30 dní. Môžete začať chatovať.</p>
                 </div>
                 <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
                     <i class="fa-solid fa-volume-high"></i>
@@ -606,10 +614,10 @@
             chatWindow.scrollTop = chatWindow.scrollHeight;
         }
         
-        // Funkcia na kontrolu predplatného a aktualizáciu ceny
+        // Funkcia na kontrolu predplatného
         function checkSubscription() {
             const lastPaymentDateStr = localStorage.getItem('lastPaymentDate');
-            const currentPrice = parseFloat(localStorage.getItem('currentPrice')) || 1.00;
+            let currentPrice = parseFloat(localStorage.getItem('currentPrice')) || 1.00;
 
             if (!lastPaymentDateStr) {
                 isSubscriptionActive = false;
@@ -623,8 +631,9 @@
             } else {
                 const lastPaymentDate = new Date(lastPaymentDateStr);
                 const today = new Date();
+                
                 const isSubscriptionExpired = today > lastPaymentDate;
-
+                
                 if (isSubscriptionExpired) {
                     isSubscriptionActive = false;
                     paymentModal.classList.remove('hidden');
@@ -647,7 +656,7 @@
                             <i class="fa-solid fa-robot text-white"></i>
                         </div>
                         <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
-                            <p>Ahoj! Váš mesačný prístup k chatu je aktívny. Aktuálna cena predplatného je ${currentPrice.toFixed(2)} €.</p>
+                            <p>Ahoj! Váš prístup k chatu je aktívny do ${lastPaymentDate.toLocaleDateString('sk-SK')}. Aktuálna cena predplatného je ${currentPrice.toFixed(2)} €.</p>
                         </div>
                         <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
                             <i class="fa-solid fa-volume-high"></i>
@@ -661,10 +670,6 @@
 
         // Kontrola pri načítaní stránky
         window.onload = function() {
-            // Vymazanie starých dát z lokálneho úložiska, ak existujú.
-            // Dátum vypršania a cenu začneme vždy odznova.
-            localStorage.removeItem('lastPaymentDate');
-            localStorage.removeItem('currentPrice');
             checkSubscription();
         };
 
@@ -678,6 +683,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
