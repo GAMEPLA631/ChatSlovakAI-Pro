@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        /* Základný štýl tela stránky a pozadia */
         body {
             font-family: 'Inter', sans-serif;
             background-image: url('https://images.deepai.org/art-image/31cd000b7f3148918f85f76a1b8604f7/ai-495f1e.jpg');
@@ -22,6 +24,8 @@
             -ms-user-select: none; /* IE10+/Edge */
             user-select: none; /* Standard */
         }
+        
+        /* Kontajner chatu s rozostreným pozadím */
         .chat-container {
             position: relative;
             z-index: 10;
@@ -38,6 +42,8 @@
             border-radius: 1.5rem;
             z-index: -1;
         }
+        
+        /* Kontajner správ s posúvaním */
         .message-container {
             max-height: 70vh;
             overflow-y: auto;
@@ -54,6 +60,8 @@
             background-color: rgba(255, 255, 255, 0.3);
             border-radius: 10px;
         }
+        
+        /* Rôzne štýly pre správy od používateľa a AI */
         .user-message {
             background-color: rgba(67, 56, 202, 0.7); /* Deep purple */
             color: white;
@@ -64,6 +72,14 @@
             color: #E2E8F0;
             border-bottom-left-radius: 0;
         }
+
+        /* Animácia pre zvýraznenie práve čítanej správy */
+        .speaking-highlight {
+            transition: background-color 0.3s ease-in-out;
+            background-color: rgba(100, 116, 139, 0.8) !important; /* Šedá farba */
+        }
+        
+        /* Animácia troch bodiek (indikátor písania) */
         .dot-flashing {
             position: relative;
             width: 10px;
@@ -104,6 +120,8 @@
             0% { background-color: #9880ff; }
             50%, 100% { background-color: #eee; }
         }
+        
+        /* Animácia pre vysúvanie chybových správ */
         @keyframes fade-in-up {
             from {
                 opacity: 0;
@@ -117,6 +135,8 @@
         .animate-fade-in-up {
             animation: fade-in-up 0.5s ease-out forwards;
         }
+        
+        /* Štýly pre platobnú vrstvu a formuláre */
         .payment-overlay {
             position: absolute;
             top: 0;
@@ -143,13 +163,13 @@
 
     <main class="w-full max-w-3xl flex flex-col h-[90vh] chat-container rounded-3xl p-6 shadow-2xl">
         
-        <!-- Header -->
+        <!-- Hlavička chatu -->
         <header class="text-center mb-6">
             <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak AI Pro</h1>
             <p class="text-sm text-gray-300 mt-2">Váš osobný spoločník s umelou inteligenciou</p>
         </header>
 
-        <!-- Chat Window -->
+        <!-- Okno chatu pre zobrazenie správ -->
         <div id="chat-window" class="message-container flex-grow mb-4 p-4 space-y-4">
             <!-- Správy sa budú vkladať sem cez JavaScript -->
             <div class="flex items-start">
@@ -165,7 +185,7 @@
             </div>
         </div>
 
-        <!-- Input Area -->
+        <!-- Vstupná oblasť pre písanie správ -->
         <div class="flex items-center space-x-3 mt-auto">
             <input type="text" id="user-input" placeholder="Napíšte svoju správu..." class="flex-grow p-4 bg-gray-900/60 text-white placeholder-gray-400 rounded-full border border-gray-700/50 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-200" disabled>
             <button id="send-button" class="p-4 bg-purple-700 hover:bg-purple-800 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900" disabled>
@@ -174,7 +194,7 @@
         </div>
     </main>
 
-    <!-- Payment Overlay -->
+    <!-- Prekrytie pre platobnú bránu -->
     <div id="payment-overlay" class="payment-overlay">
         <div class="bg-gray-800/90 text-white p-8 rounded-3xl shadow-2xl text-center max-w-sm">
             <h2 class="text-3xl font-bold mb-4">Odomknite chat</h2>
@@ -228,6 +248,7 @@
 
 
     <script>
+        // Prvky DOM
         const chatWindow = document.getElementById('chat-window');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
@@ -236,8 +257,10 @@
         const paysafeForm = document.getElementById('paysafe-form');
         const bankcardForm = document.getElementById('bankcard-form');
 
+        // Stavové premenné
         let chatHistory = [];
         const apiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o"; // API kľúč bude poskytnutý runtime prostredím
+        const languagePrompt = "Odpovedaj vždy v slovenskom jazyku.";
 
         // Funkcia na zobrazenie používateľsky prívetivej chybovej správy
         function showError(message) {
@@ -251,7 +274,8 @@
             }, 3000);
         }
 
-        // Pomocné funkcie pre audio
+        // --- Pomocné funkcie pre generovanie zvuku (TTS) ---
+        // Konvertuje base64 reťazec na ArrayBuffer
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -262,6 +286,7 @@
             return bytes.buffer;
         }
 
+        // Konvertuje PCM audio na formát WAV
         function pcmToWav(pcmData, sampleRate) {
             const pcm16 = new Int16Array(pcmData);
             const buffer = new ArrayBuffer(44 + pcm16.byteLength);
@@ -274,20 +299,20 @@
                 }
             };
 
-            // RIFF header
+            // RIFF hlavička
             writeString('RIFF');
             view.setUint32(offset, 36 + pcm16.byteLength, true); offset += 4;
             writeString('WAVE');
 
             // fmt chunk
             writeString('fmt ');
-            view.setUint32(offset, 16, true); offset += 4; // Chunk size
-            view.setUint16(offset, 1, true); offset += 2; // Audio format (PCM)
-            view.setUint16(offset, 1, true); offset += 2; // Number of channels (mono)
-            view.setUint32(offset, sampleRate, true); offset += 4; // Sample rate
-            view.setUint32(offset, sampleRate * 2, true); offset += 4; // Byte rate
-            view.setUint16(offset, 2, true); offset += 2; // Block align
-            view.setUint16(offset, 16, true); offset += 2; // Bits per sample
+            view.setUint32(offset, 16, true); offset += 4; // Veľkosť bloku
+            view.setUint16(offset, 1, true); offset += 2; // Formát zvuku (PCM)
+            view.setUint16(offset, 1, true); offset += 2; // Počet kanálov (mono)
+            view.setUint32(offset, sampleRate, true); offset += 4; // Vzorkovacia frekvencia
+            view.setUint32(offset, sampleRate * 2, true); offset += 4; // Dátový tok (Byte rate)
+            view.setUint16(offset, 2, true); offset += 2; // Zarovnanie bloku
+            view.setUint16(offset, 16, true); offset += 2; // Bity na vzorku
 
             // data chunk
             writeString('data');
@@ -300,7 +325,17 @@
             return new Blob([view], { type: 'audio/wav' });
         }
         
+        // Funkcia na prehrávanie textu (TTS)
         async function speakMessage(text, buttonElement) {
+            const messageDiv = buttonElement.parentElement.querySelector('div');
+            const audio = new Audio();
+            
+            const originalIcon = buttonElement.innerHTML;
+            buttonElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+            buttonElement.disabled = true;
+            messageDiv.classList.add('speaking-highlight');
+
+            // Pokyn pre AI, aby hovorila slovensky
             const prompt = `Hovorte veselým a priateľským hlasom v slovenčine: ${text}`;
             const payload = {
                 contents: [{
@@ -318,11 +353,6 @@
             };
 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-            const audio = new Audio();
-            
-            const originalIcon = buttonElement.innerHTML;
-            buttonElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
-            buttonElement.disabled = true;
 
             try {
                 const response = await fetch(apiUrl, {
@@ -359,9 +389,14 @@
             } finally {
                 buttonElement.innerHTML = originalIcon;
                 buttonElement.disabled = false;
+                // Odstráni zvýraznenie po skončení prehrávania
+                audio.addEventListener('ended', () => {
+                    messageDiv.classList.remove('speaking-highlight');
+                });
             }
         }
         
+        // Funkcia na odoslanie správy
         async function sendMessage() {
             const userMessage = userInput.value.trim();
             if (!userMessage) return;
@@ -399,7 +434,7 @@
 
             // Vytvorenie payloadu s inštrukciou pre model
             const apiPayloadContents = [
-                { role: "user", parts: [{ text: "Odpovedaj vždy v slovenskom jazyku." }] },
+                { role: "user", parts: [{ text: languagePrompt }] },
                 ...chatHistory
             ];
             const payload = { contents: apiPayloadContents };
@@ -547,6 +582,7 @@
             }
         };
 
+        // Event listenery
         sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !userInput.disabled) {
@@ -556,4 +592,5 @@
     </script>
 </body>
 </html>
+
 
