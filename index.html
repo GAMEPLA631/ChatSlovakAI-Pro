@@ -397,7 +397,13 @@
             chatWindow.appendChild(typingIndicator);
             chatWindow.scrollTop = chatWindow.scrollHeight;
 
-            const payload = { contents: chatHistory };
+            // Vytvorenie payloadu s inštrukciou pre model
+            const apiPayloadContents = [
+                { role: "user", parts: [{ text: "Odpovedaj vždy v slovenskom jazyku." }] },
+                ...chatHistory
+            ];
+            const payload = { contents: apiPayloadContents };
+
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
             try {
@@ -550,3 +556,4 @@
     </script>
 </body>
 </html>
+
