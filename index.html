@@ -185,6 +185,8 @@
         <header class="text-center mb-6">
             <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak AI Pro</h1>
             <p class="text-sm text-gray-300 mt-2" id="subscription-status"></p>
+            <!-- Nový element pre zobrazenie počtu správ -->
+            <p class="text-sm font-semibold text-purple-400 mt-1" id="message-limit-status"></p>
         </header>
 
         <!-- Platobné rozhranie (skryté predvolene) -->
@@ -254,6 +256,7 @@
         const paysafeCodeInput = document.getElementById('paysafe-code');
         const paymentError = document.getElementById('payment-error');
         const currentPriceDisplay = document.getElementById('current-price-display');
+        const messageLimitStatus = document.getElementById('message-limit-status'); // Nový element
 
         // Modálne prvky
         const modalBackdrop = document.getElementById('modal-backdrop');
@@ -263,10 +266,16 @@
 
         // Stavové premenné
         let chatHistory = [];
-        // API kľúč je ponechaný prázdny a bude automaticky poskytnutý v prostredí Canvas.
         const geminiApiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o";
         let audioInstance = null;
         const SUBSCRIPTION_KEY = 'premium-chat-subscription';
+
+        // --- KONŠTANTY PRE LIMITY SPRÁV (NOVÉ) ---
+        // Maximálny počet správ pre neregistrovaných (obmedzená verzia)
+        const MAX_MESSAGES_FREE = 5;
+        // Kľúč pre lokálne úložisko pre počet správ
+        const MESSAGE_COUNT_KEY = 'chat-message-count';
+        // --- KONIEC NOVÝCH KONŠTÁNT ---
 
         // --- Funkcie pre modálne okná namiesto alert() ---
         /**
@@ -331,7 +340,7 @@
                 return null;
             }
         }
-
+        
         // --- Funkcie pre správu predplatného a dynamické ceny ---
 
         /**
@@ -341,6 +350,10 @@
             const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
             const now = new Date();
             
+            // Načíta a aktualizuje počet správ
+            let messageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY) || 0;
+            saveToLocalStorage(MESSAGE_COUNT_KEY, messageCount);
+            
             if (subscriptionData && new Date(subscriptionData.expiryDate) > now) {
                 // Predplatné je aktívne
                 chatView.classList.remove('hidden');
@@ -349,6 +362,7 @@
                 const expiryDate = new Date(subscriptionData.expiryDate);
                 const daysRemaining = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
                 subscriptionStatus.innerText = `Predplatné je aktívne. Zostáva ${daysRemaining} dní.`;
+                messageLimitStatus.innerText = ''; // Bez obmedzenia správ pre premium používateľov
 
                 // Vymaže sa existujúca história a pridá sa nová úvodná správa
                 chatHistory = [];
@@ -374,6 +388,7 @@
 
                 currentPriceDisplay.innerText = `${newPrice.toFixed(2)} €`;
                 subscriptionStatus.innerText = `Predplatné vypršalo.`;
+                messageLimitStatus.innerText = `Skúšobná verzia: ${MAX_MESSAGES_FREE - messageCount} správ zostáva.`;
             }
         }
         
@@ -404,6 +419,9 @@
             
             saveToLocalStorage(SUBSCRIPTION_KEY, subscriptionData);
             
+            // Po úspešnej platbe resetujeme počítadlo správ
+            saveToLocalStorage(MESSAGE_COUNT_KEY, 0);
+
             // Nahradenie alert() vlastným modálnym oknom
             showModal(
                 "Platba úspešná",
@@ -606,6 +624,18 @@
             const userMessage = userInput.value.trim();
             if (!userMessage) return;
 
+            // --- KONTROLA LIMITU SPRÁV (NOVÉ) ---
+            const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
+            const now = new Date();
+            const isSubscribed = subscriptionData && new Date(subscriptionData.expiryDate) > now;
+            let messageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY) || 0;
+
+            if (!isSubscribed && messageCount >= MAX_MESSAGES_FREE) {
+                showModal("Limit správ prekročený", `Dosiahli ste maximálny počet ${MAX_MESSAGES_FREE} správ pre skúšobnú verziu. Aktivujte si predplatné pre neobmedzený chat.`);
+                return;
+            }
+            // --- KONIEC KONTROLY LIMITU SPRÁV ---
+
             if (audioInstance) {
                 audioInstance.pause();
                 audioInstance.currentTime = 0;
@@ -613,6 +643,15 @@
 
             appendUserMessage(userMessage);
             userInput.value = '';
+            
+            // --- AKTUALIZÁCIA POČTU SPRÁV (NOVÉ) ---
+            if (!isSubscribed) {
+                messageCount++;
+                saveToLocalStorage(MESSAGE_COUNT_KEY, messageCount);
+                messageLimitStatus.innerText = `Skúšobná verzia: ${MAX_MESSAGES_FREE - messageCount} správ zostáva.`;
+            }
+            // --- KONIEC AKTUALIZÁCIE POČTU SPRÁV ---
+
 
             const typingIndicator = document.createElement('div');
             typingIndicator.id = 'typing-indicator';
@@ -679,7 +718,6 @@
     </script>
 </body>
 </html>
-
 
 
 
