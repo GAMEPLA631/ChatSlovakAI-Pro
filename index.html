@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak AI Premium</title>
+    <title>ChatSlovak AI Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
@@ -159,7 +159,7 @@
         
         <!-- Hlavička aplikácie -->
         <header class="text-center mb-6">
-            <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak AI Premium</h1>
+            <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak AI Pro</h1>
             <p class="text-sm text-gray-300 mt-2" id="subscription-status"></p>
         </header>
 
@@ -244,7 +244,6 @@
         const languagePrompt = "Odpovedaj vždy v slovenskom jazyku.";
         let audioInstance = null;
         const SUBSCRIPTION_KEY = 'premium-chat-subscription';
-        const CHAT_HISTORY_KEY = 'premium-chat-history';
 
         // --- Funkcie pre lokálne úložisko ---
         
@@ -294,21 +293,10 @@
                 const daysRemaining = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
                 subscriptionStatus.innerText = `Predplatné je aktívne. Zostáva ${daysRemaining} dní.`;
 
-                // Načítanie a zobrazenie histórie chatu
-                const savedChatHistory = loadFromLocalStorage(CHAT_HISTORY_KEY);
-                if (savedChatHistory) {
-                    chatHistory = savedChatHistory;
-                    chatHistory.forEach(msg => {
-                        if (msg.role === 'user') {
-                            appendUserMessage(msg.parts[0].text, false);
-                        } else if (msg.role === 'model') {
-                            appendAiMessage(msg.parts[0].text, false, false);
-                        }
-                    });
-                } else {
-                    // Predvolená úvodná správa, ak nie je žiadna história
-                    appendAiMessage("Ahoj! Poďme chatovať. Môžete si zapnúť generovanie hlasu pre moje odpovede.", false, false);
-                }
+                // Vymaže sa existujúca história a pridá sa nová úvodná správa
+                chatHistory = [];
+                chatWindow.innerHTML = '';
+                appendAiMessage("Ahoj! Poďme chatovať. Môžete si zapnúť generovanie hlasu pre moje odpovede.", false, false);
                 chatWindow.scrollTop = chatWindow.scrollHeight;
                 
             } else {
@@ -586,7 +574,6 @@
 
             if (shouldSave) {
                 chatHistory.push({ role: "user", parts: [{ text: message }] });
-                saveToLocalStorage(CHAT_HISTORY_KEY, chatHistory);
             }
         }
 
@@ -614,7 +601,6 @@
 
             if (shouldSave) {
                 chatHistory.push({ role: "model", parts: [{ text: message }] });
-                saveToLocalStorage(CHAT_HISTORY_KEY, chatHistory);
             }
         }
 
@@ -695,7 +681,6 @@
     </script>
 </body>
 </html>
-
 
 
 
