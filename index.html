@@ -275,11 +275,12 @@
         let audioInstance = null;
         const SUBSCRIPTION_KEY = 'premium-chat-subscription';
 
-        // --- KONŠTANTY PRE LIMITY SPRÁV (NOVÉ) ---
-        // Maximálny počet správ pre neregistrovaných (obmedzená verzia)
-        const MAX_MESSAGES_FREE = 5;
-        // Kľúč pre lokálne úložisko pre počet správ
-        const MESSAGE_COUNT_KEY = 'chat-message-count';
+        // --- KONŠTANTY PRE LIMITY SPRÁV (NOVÉ A UPRAVENÉ) ---
+        const MAX_MESSAGES_PAID = 100; // Maximálny počet správ pre platených používateľov
+        const MAX_MESSAGES_FREE = 5; // Maximálny počet správ pre neregistrovaných (obmedzená verzia)
+        // Kľúče pre lokálne úložisko pre počet správ
+        const MESSAGE_COUNT_KEY_FREE = 'chat-message-count-free';
+        const MESSAGE_COUNT_KEY_PAID = 'chat-message-count-paid';
         // --- KONIEC NOVÝCH KONŠTÁNT ---
         
         // --- NOVÉ PREMENNÉ PRE NÁHODNÝ ČASOVÝ LIMIT (COOLDOWN) ---
@@ -363,10 +364,6 @@
             const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
             const now = new Date();
             
-            // Načíta a aktualizuje počet správ
-            let messageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY) || 0;
-            saveToLocalStorage(MESSAGE_COUNT_KEY, messageCount);
-            
             if (subscriptionData && new Date(subscriptionData.expiryDate) > now) {
                 // Predplatné je aktívne
                 chatView.classList.remove('hidden');
@@ -375,7 +372,11 @@
                 const expiryDate = new Date(subscriptionData.expiryDate);
                 const daysRemaining = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
                 subscriptionStatus.innerText = `Predplatné je aktívne. Zostáva ${daysRemaining} dní.`;
-                messageLimitStatus.innerText = ''; // Bez obmedzenia správ pre premium používateľov
+
+                // Zobrazenie limitu pre platenú verziu (100 správ)
+                let paidMessageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY_PAID) || 0;
+                messageLimitStatus.innerText = `Platená verzia: ${Math.max(0, MAX_MESSAGES_PAID - paidMessageCount)} správ zostáva.`;
+                
                 cooldownStatus.classList.add('hidden'); // Skrytie stavu cooldown pre premium používateľov
 
                 // Vymaže sa existujúca história a pridá sa nová úvodná správa
@@ -401,7 +402,10 @@
 
                 currentPriceDisplay.innerText = `${newPrice.toFixed(2)} €`;
                 subscriptionStatus.innerText = `Predplatné vypršalo.`;
-                messageLimitStatus.innerText = `Skúšobná verzia: ${Math.max(0, MAX_MESSAGES_FREE - messageCount)} správ zostáva.`;
+
+                // Zobrazenie limitu pre skúšobnú verziu (5 správ)
+                let freeMessageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY_FREE) || 0;
+                messageLimitStatus.innerText = `Skúšobná verzia: ${Math.max(0, MAX_MESSAGES_FREE - freeMessageCount)} správ zostáva.`;
 
                 // Vymaže sa existujúca história a pridá sa nová úvodná správa
                 chatHistory = [];
@@ -437,8 +441,9 @@
             
             saveToLocalStorage(SUBSCRIPTION_KEY, subscriptionData);
             
-            // Po úspešnej platbe resetujeme počítadlo správ
-            saveToLocalStorage(MESSAGE_COUNT_KEY, 0);
+            // Po úspešnej platbe resetujeme počítadlá správ pre obe verzie
+            saveToLocalStorage(MESSAGE_COUNT_KEY_FREE, 0);
+            saveToLocalStorage(MESSAGE_COUNT_KEY_PAID, 0);
 
             // Nahradenie alert() vlastným modálnym oknom
             showModal(
@@ -594,7 +599,6 @@
         * @returns {Promise<string|null>} URL objektu s audio dátami alebo null pri chybe.
         */
         async function speakWithGemini(text) {
-            // Pridanie inštrukcie pre model, aby hovoril v slovenskom jazyku s priateľským tónom
             const prompt = `Hovorte veselým a priateľským hlasom v slovenčine: ${text}`;
             const payload = {
                 contents: [{
@@ -718,14 +722,16 @@
                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
                     <i class="fa-solid fa-robot text-white"></i>
                 </div>
-                <div class="dot-flashing"></div>
+                <div class="p-3 bg-gray-800/70 rounded-2xl rounded-bl-none shadow-md">
+                    <div class="dot-flashing"></div>
+                </div>
             `;
             chatWindow.appendChild(loadingDiv);
             chatWindow.scrollTop = chatWindow.scrollHeight;
         }
 
-        // Funkcia na odstránenie indikátora načítania
-        function removeLoadingIndicator() {
+        // Funkcia na skrytie indikátora načítania
+        function hideLoadingIndicator() {
             const loadingDiv = document.getElementById('loading-indicator');
             if (loadingDiv) {
                 loadingDiv.remove();
@@ -733,110 +739,127 @@
         }
 
         /**
-         * Odosiela správu do Gemini API a spracúva odpoveď.
+         * Volá API Gemini na generovanie textu.
+         * @param {string} prompt Text od používateľa.
+         * @returns {Promise<string>} Generovaný text.
          */
-        async function sendMessage() {
-            const userMessage = userInput.value.trim();
-            if (!userMessage) return;
-
-            // Kontrola aktívneho cooldownu
-            if (isCooldownActive) {
-                if (cooldownEndTime > new Date()) {
-                    showModal("Časový limit aktívny", `Nemôžete posielať správy, kým neuplynie časový limit.`);
-                    return;
-                } else {
-                    // Cooldown vypršal, zrušíme ho a pokračujeme
-                    isCooldownActive = false;
-                    clearInterval(cooldownInterval);
-                    cooldownInterval = null;
-                    cooldownStatus.classList.add('hidden');
-                }
-            }
-
-            // Kontrola limitu správ pre bezplatnú verziu
-            const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
-            const isSubscribed = subscriptionData && new Date(subscriptionData.expiryDate) > new Date();
-            let messageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY) || 0;
-
-            if (!isSubscribed && messageCount >= MAX_MESSAGES_FREE) {
-                showModal("Limit správ prekročený", "Prekročili ste limit 5 správ pre bezplatnú verziu. Zaplaťte si predplatné pre neobmedzené používanie.");
-                // Zobrazíme platobné okno a zastavíme funkciu
-                paymentView.classList.remove('hidden');
-                chatView.classList.add('hidden');
-                return;
-            }
-            
-            // Kontrola cool-downu po 5 správach pre bezplatnú verziu
-            if (!isSubscribed && messagesSinceCooldown >= MESSAGES_BEFORE_COOLDOWN) {
-                startCooldown();
-                return;
-            }
-
-            appendUserMessage(userMessage);
-            userInput.value = '';
-            
-            // Zvýšenie počítadiel správ
-            if (!isSubscribed) {
-                messageCount++;
-                saveToLocalStorage(MESSAGE_COUNT_KEY, messageCount);
-                messagesSinceCooldown++;
-                messageLimitStatus.innerText = `Skúšobná verzia: ${Math.max(0, MAX_MESSAGES_FREE - messageCount)} správ zostáva.`;
-            }
-
-            // Zakázanie vstupu a tlačidla a zobrazenie indikátora načítania
-            userInput.disabled = true;
-            sendButton.disabled = true;
-            showLoadingIndicator();
-            
-            // Vytvorenie payloadu pre Gemini API
-            const payload = { contents: chatHistory };
-            const modelName = "gemini-2.5-flash-preview-05-20";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+        async function generateText(prompt) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
+            let payload = { contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] };
 
             try {
                 const response = await makeApiCall(apiUrl, payload, "generovanie textu cez Gemini");
                 const result = await response.json();
-                let aiResponse = "Nič som nedostal. Skúste to znova.";
-                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
-                    aiResponse = result.candidates[0].content.parts[0].text;
-                }
                 
-                removeLoadingIndicator();
-                appendAiMessage(aiResponse);
-
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error("Neplatná textová odpoveď od Gemini API.");
+                }
             } catch (error) {
-                console.error("Chyba pri získavaní odpovede od AI:", error);
-                removeLoadingIndicator();
-                showError("Prepáčte, vyskytla sa chyba pri komunikácii s AI. Skúste to prosím znova.");
-            } finally {
-                userInput.disabled = false;
-                sendButton.disabled = false;
-                userInput.focus();
+                console.error("Chyba pri generovaní textu Gemini:", error);
+                throw error;
             }
         }
-        
-        // --- Inicializácia a obsluha udalostí ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Inicializácia: skontroluje stav predplatného a zobrazí príslušné rozhranie
-            checkSubscription();
+
+        /**
+         * Hlavná funkcia na odoslanie správy.
+         */
+        async function sendMessage() {
+            if (isCooldownActive) {
+                showModal("Časový limit", "Musíte počkať, kým neskončí časový limit.");
+                return;
+            }
+
+            const message = userInput.value.trim();
+            if (message === '') return;
             
-            // Pridanie obsluhy udalostí pre tlačidlá
-            payButton.addEventListener('click', simulatePayment);
-            sendButton.addEventListener('click', sendMessage);
+            // Kontrola limitu správ
+            const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
+            const isPremium = subscriptionData && new Date(subscriptionData.expiryDate) > new Date();
             
-            // Umožní odoslať správu stlačením klávesu Enter
-            userInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage();
+            let messageCount;
+            let maxMessages;
+            let messageCountKey;
+
+            if (isPremium) {
+                messageCountKey = MESSAGE_COUNT_KEY_PAID;
+                messageCount = loadFromLocalStorage(messageCountKey) || 0;
+                maxMessages = MAX_MESSAGES_PAID;
+            } else {
+                messageCountKey = MESSAGE_COUNT_KEY_FREE;
+                messageCount = loadFromLocalStorage(messageCountKey) || 0;
+                maxMessages = MAX_MESSAGES_FREE;
+            }
+
+            if (messageCount >= maxMessages) {
+                if (isPremium) {
+                    showModal("Limit správ prekročený", `Dosiahli ste limit ${MAX_MESSAGES_PAID} správ. Vaše predplatné bolo vyčerpané. Pre ďalšie používanie je potrebné predplatné obnoviť.`);
+                } else {
+                    showModal("Limit správ prekročený", `Dosiahli ste limit ${MAX_MESSAGES_FREE} správ pre skúšobnú verziu. Pre neobmedzený prístup je potrebné zaplatiť predplatné.`);
                 }
-            });
+                return;
+            }
+
+            // Očistenie a zobrazenie správy od používateľa
+            userInput.value = '';
+            appendUserMessage(message);
+
+            // Zobrazenie indikátora načítania
+            showLoadingIndicator();
+
+            try {
+                // Generovanie odpovede AI
+                const aiResponse = await generateText(message);
+                
+                // Zobrazenie odpovede AI
+                hideLoadingIndicator();
+                appendAiMessage(aiResponse, ttsApiToggle.checked);
+
+                // Inkrementácia počítadla správ
+                saveToLocalStorage(messageCountKey, messageCount + 1);
+
+                // Aktualizácia stavu limitu správ
+                if (isPremium) {
+                    messageLimitStatus.innerText = `Platená verzia: ${Math.max(0, MAX_MESSAGES_PAID - (messageCount + 1))} správ zostáva.`;
+                } else {
+                    messageLimitStatus.innerText = `Skúšobná verzia: ${Math.max(0, MAX_MESSAGES_FREE - (messageCount + 1))} správ zostáva.`;
+                }
+
+                // Kontrola a spustenie cool-downu
+                messagesSinceCooldown++;
+                if (!isPremium && messagesSinceCooldown >= MESSAGES_BEFORE_COOLDOWN) {
+                    startCooldown();
+                }
+
+            } catch (error) {
+                console.error('Chyba pri posielaní správy:', error);
+                hideLoadingIndicator();
+                appendAiMessage('Prepáčte, vyskytla sa chyba pri komunikácii s AI. Skúste to prosím neskôr.', false);
+            }
+        }
+
+        // --- Event Listenery ---
+        
+        payButton.addEventListener('click', simulatePayment);
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+            }
         });
+
+        // Kontrola predplatného pri načítaní stránky
+        window.onload = () => {
+            checkSubscription();
+        };
 
     </script>
 </body>
 </html>
-
-
 
 
 
