@@ -271,7 +271,7 @@
         // Stavové premenné
         let chatHistory = [];
         // API kľúč pre Gemini. V prostredí Canvas sa nastaví automaticky.
-        const geminiApiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o";
+        const geminiApiKey = "AIzaSyDGZFoDcXgHLrhyfada9ZdlrHTnyrfAn2U";
         let audioInstance = null;
         const SUBSCRIPTION_KEY = 'premium-chat-subscription';
 
@@ -290,6 +290,105 @@
         let cooldownEndTime = null;
         let cooldownInterval = null; // Na uloženie intervalu pre aktualizáciu časovača
         // --- KONIEC NOVÝCH PREMENNÝCH ---
+
+        // --- NOVÁ ČASŤ: Funkcia na získanie informácií o kalendári a meninách ---
+        const slovakNameDays = {
+            '01-01': 'Nový rok, Alexandra', '01-02': 'Karina', '01-03': 'Daniela', '01-04': 'Drahoslav', '01-05': 'Andrea',
+            '01-06': 'Antónia', '01-07': 'Bohuslava', '01-08': 'Severín', '01-09': 'Alexej', '01-10': 'Dáša',
+            '01-11': 'Malvína', '01-12': 'Ernest', '01-13': 'Rastislav', '01-14': 'Radovan', '01-15': 'Dobroslav',
+            '01-16': 'Kristína', '01-17': 'Nataša', '01-18': 'Bohdana', '01-19': 'Drahomíra', '01-20': 'Dalibor',
+            '01-21': 'Vincent', '01-22': 'Zora', '01-23': 'Miloš', '01-24': 'Timotej', '01-25': 'Gejza',
+            '01-26': 'Tamara', '01-27': 'Bohuš', '01-28': 'Alfonz', '01-29': 'Gašpar', '01-30': 'Ema',
+            '01-31': 'Emil', '02-01': 'Tatiana', '02-02': 'Erik', '02-03': 'Blažej', '02-04': 'Veronika',
+            '02-05': 'Agáta', '02-06': 'Dorota', '02-07': 'Vanda', '02-08': 'Zoja', '02-09': 'Zdenko',
+            '02-10': 'Gabriela', '02-11': 'Dezider', '02-12': 'Perla', '02-13': 'Arpád', '02-14': 'Valentín',
+            '02-15': 'Pravoslav', '02-16': 'Ľubomír', '02-17': 'Milada', '02-18': 'Gizela', '02-19': 'Vratko',
+            '02-20': 'Vlasta', '02-21': 'Etela', '02-22': 'Roman', '02-23': 'Matej', '02-24': 'Jaroslav',
+            '02-25': 'Viktor', '02-26': 'Patrik', '02-27': 'Albin', '02-28': 'Viktor', '02-29': 'Oskar',
+            '03-01': 'Albín', '03-02': 'Anežka', '03-03': 'Bohumil', '03-04': 'Kazimír', '03-05': 'Fridrich',
+            '03-06': 'Radoslav', '03-07': 'Tomáš', '03-08': 'Alan', '03-09': 'Františka', '03-10': 'Viera',
+            '03-11': 'Konštantín', '03-12': 'Gregor', '03-13': 'Matilda', '03-14': 'Radka', '03-15': 'Svetlana',
+            '03-16': 'Boleslav', '03-17': 'Ľubica', '03-18': 'Eduard', '03-19': 'Jozef', '03-20': 'Víťazoslav',
+            '03-21': 'Blahoslav', '03-22': 'Beňadik', '03-23': 'Dominik', '03-24': 'Elena', '03-25': 'Marián',
+            '03-26': 'Emanuel', '03-27': 'Alena', '03-28': 'Soňa', '03-29': 'Miroslav', '03-30': 'Vieroslava',
+            '03-31': 'Benjamín', '04-01': 'Hugo', '04-02': 'Zita', '04-03': 'Richard', '04-04': 'Izidor',
+            '04-05': 'Miroslava', '04-06': 'Irena', '04-07': 'Zlatko', '04-08': 'Dana', '04-09': 'Milena',
+            '04-10': 'Igor', '04-11': 'Július', '04-12': 'Estera', '04-13': 'Aurel', '04-14': 'Justín',
+            '04-15': 'Fedor', '04-16': 'Ivana', '04-17': 'Henrich', '04-18': 'Valér', '04-19': 'Jarmila',
+            '04-20': 'Vojtech', '04-21': 'Marcel', '04-22': 'Oto', '04-23': 'Juraj', '04-24': 'Marek',
+            '04-25': 'Jaroslava', '04-26': 'Jaroslava', '04-27': 'Jana', '04-28': 'Valéria', '04-29': 'Prvoslava',
+            '04-30': 'Anastázia', '05-01': 'Filip', '05-02': 'Hermína', '05-03': 'Tamara', '05-04': 'Viktória',
+            '05-05': 'Vlastislav', '05-06': 'Tibor', '05-07': 'Ján', '05-08': 'Monika', '05-09': 'Mária',
+            '05-10': 'Viliam', '05-11': 'Bohumil', '05-12': 'Pankrác', '05-13': 'Servác', '05-14': 'Bonifác',
+            '05-15': 'Žofia', '05-16': 'Svetozár', '05-17': 'Diana', '05-18': 'Viktor', '05-19': 'Mária',
+            '05-20': 'Bernard', '05-21': 'Dušan', '05-22': 'Vilma', '05-23': 'Júlia', '05-24': 'Ela',
+            '05-25': 'Urbán', '05-26': 'Alica', '05-27': 'Liliana', '05-28': 'Viliam', '05-29': 'Vilma',
+            '05-30': 'Júlia', '05-31': 'Ela', '06-01': 'Jana', '06-02': 'Karol', '06-03': 'Gizela',
+            '06-04': 'Emil', '06-05': 'Blanka', '06-06': 'Norbert', '06-07': 'Róbert', '06-08': 'Medard',
+            '06-09': 'Zdenko', '06-10': 'Margaréta', '06-11': 'Dobroslava', '06-12': 'Anton', '06-13': 'Gita',
+            '06-14': 'Vasil', '06-15': 'Vít', '06-16': 'Blanka', '06-17': 'Adolf', '06-18': 'Miloš',
+            '06-19': 'Alena', '06-20': 'Valéria', '06-21': 'Alojz', '06-22': 'Paulína', '06-23': 'Marián',
+            '06-24': 'Ján', '06-25': 'Adriana', '06-26': 'Ladislav', '06-27': 'Branislav', '06-28': 'Peter',
+            '06-29': 'Pavol', '06-30': 'Milada', '07-01': 'Diana', '07-02': 'Berta', '07-03': 'Marián',
+            '07-04': 'Ján', '07-05': 'Cyril', '07-06': 'Metod', '07-07': 'Renáta', '07-08': 'Eliáš',
+            '07-09': 'Oliver', '07-10': 'Amália', '07-11': 'Milota', '07-12': 'Nina', '07-13': 'Alžbeta',
+            '07-14': 'Eva', '07-15': 'Henrieta', '07-16': 'Drahomír', '07-17': 'Bohuslav', '07-18': 'Kamila',
+            '07-19': 'Vladimír', '07-20': 'Magdaléna', '07-21': 'Daniel', '07-22': 'Oľga', '07-23': 'Libor',
+            '07-24': 'Vladislav', '07-25': 'Jakub', '07-26': 'Anna', '07-27': 'Božena', '07-28': 'Krištof',
+            '07-29': 'Marta', '07-30': 'Ignác', '07-31': 'Emil', '08-01': 'Božidara', '08-02': 'Gustáv',
+            '08-03': 'Bohumil', '08-04': 'Dominik', '08-05': 'Hana', '08-06': 'Timotej', '08-07': 'Tomáš',
+            '08-08': 'Oskár', '08-09': 'Ľubomír', '08-10': 'Vavrinec', '08-11': 'Zuzana', '08-12': 'Darina',
+            '08-13': 'Zuzana', '08-14': 'Elena', '08-15': 'Marcela', '08-16': 'Mariana', '08-17': 'Elena',
+            '08-18': 'Ľudovít', '08-19': 'Vladimír', '08-20': 'Filip', '08-21': 'Bernard', '08-22': 'Jana',
+            '08-23': 'Júlia', '08-24': 'Bartolomej', '08-25': 'Ľudovít', '08-26': 'Branislav', '08-27': 'Katarína',
+            '08-28': 'Augustín', '08-29': 'Želmíra', '08-30': 'Eufémia', '08-31': 'Róbert', '09-01': 'Drahoslava',
+            '09-02': 'Linda', '09-03': 'Belo', '09-04': 'Rozália', '09-05': 'Regína', '09-06': 'Alica',
+            '09-07': 'Marián', '09-08': 'Miroslav', '09-09': 'Margaréta', '09-10': 'Viera', '09-11': 'Vladimír',
+            '09-12': 'Jozefína', '09-13': 'Ľubomír', '09-14': 'Ivana', '09-15': 'Igor', '09-16': 'Kristína',
+            '09-17': 'Ludmila', '09-18': 'Gabriela', '09-19': 'Miroslava', '09-20': 'Matúš', '09-21': 'František',
+            '09-22': 'Ondrej', '09-23': 'Amália', '09-24': 'Anna', '09-25': 'Vladislav', '09-26': 'Justína',
+            '09-27': 'Vladimír', '09-28': 'Václav', '09-29': 'Michaela', '09-30': 'Jaroslav', '10-01': 'Arnold',
+            '10-02': 'Levoslav', '10-03': 'Stela', '10-04': 'František', '10-05': 'Viera', '10-06': 'Natália',
+            '10-07': 'Sergej', '10-08': 'Zuzana', '10-09': 'Oľga', '10-10': 'Tibor', '10-11': 'Slavomír',
+            '10-12': 'Kvetoslava', '10-13': 'Timotej', '10-14': 'Alžbeta', '10-15': 'Terézia', '10-16': 'Vladislav',
+            '10-17': 'Hedviga', '10-18': 'Lukáš', '10-19': 'Vendelín', '10-20': 'Uršula', '10-21': 'Šimon',
+            '10-22': 'Ondrej', '10-23': 'Michal', '10-24': 'Vlasta', '10-25': 'Dušan', '10-26': 'Demeter',
+            '10-27': 'Terézia', '10-28': 'Marek', '10-29': 'Alžbeta', '10-30': 'Vladimír', '10-31': 'Silvia',
+            '11-01': 'Denis', '11-02': 'Vlasta', '11-03': 'Hubert', '11-04': 'Karol', '11-05': 'Imrich',
+            '11-06': 'Renáta', '11-07': 'Bohdan', '11-08': 'Róbert', '11-09': 'Mária', '11-10': 'Kamil',
+            '11-11': 'Martin', '11-12': 'Svätopluk', '11-13': 'Stanislav', '11-14': 'Emil', '11-15': 'Leopold',
+            '11-16': 'Agáta', '11-17': 'Želmíra', '11-18': 'Ondrej', '11-19': 'Mária', '11-20': 'Stanislava',
+            '11-21': 'Miloslav', '11-22': 'Cecília', '11-23': 'Klement', '11-24': 'Emília', '11-25': 'Katarína',
+            '11-26': 'Kornel', '11-27': 'Milan', '11-28': 'Henrieta', '11-29': 'Vratislav', '11-30': 'Andrej',
+            '12-01': 'Drahoslav', '12-02': 'Blanka', '12-03': 'Ida', '12-04': 'Barbora', '12-05': 'Júlia',
+            '12-06': 'Mikuláš', '12-07': 'Ambroz', '12-08': 'Marína', '12-09': 'Izabela', '12-10': 'Radovan',
+            '12-11': 'Vladimír', '12-12': 'Emília', '12-13': 'Lucia', '12-14': 'Branislava', '12-15': 'Ivica',
+            '12-16': 'Albína', '12-17': 'Kornélia', '12-18': 'Silvester', '12-19': 'Dagmar', '12-20': 'Bohdan',
+            '12-21': 'Milada', '12-22': 'Vlasta', '12-23': 'Eva', '12-24': 'Adam', '12-25': 'Štefan',
+            '12-26': 'Štefan', '12-27': 'Ján', '12-28': 'Anna', '12-29': 'Milada', '12-30': 'Eugen',
+            '12-31': 'Silvester'
+        };
+
+        /**
+         * Získa aktuálne informácie o dni v týždni, dátume a meninách na Slovensku.
+         * @returns {string} Sformátovaný reťazec s informáciami.
+         */
+        function getCalendarInfo() {
+            const today = new Date();
+            const dayOfWeek = today.toLocaleDateString('sk-SK', { weekday: 'long' });
+            const day = today.getDate();
+            const month = today.getMonth() + 1;
+            const year = today.getFullYear();
+            const formattedMonth = today.toLocaleDateString('sk-SK', { month: 'long' });
+
+            const monthStr = month < 10 ? `0${month}` : `${month}`;
+            const dayStr = day < 10 ? `0${day}` : `${day}`;
+            const key = `${monthStr}-${dayStr}`;
+            const nameDay = slovakNameDays[key] || 'nie je známe';
+
+            return `(Kontext pre teba: Dnes je ${dayOfWeek}, ${day}. ${formattedMonth} ${year}. Meniny má ${nameDay}.)`;
+        }
+        // --- KONIEC NOVEJ ČASTI ---
 
         // --- Funkcie pre modálne okná namiesto alert() ---
         /**
@@ -712,150 +811,109 @@
                 chatHistory.push({ role: "model", parts: [{ text: message }] });
             }
         }
-        
-        // Funkcia na zobrazenie indikátora načítania
-        function showLoadingIndicator() {
-            const loadingDiv = document.createElement('div');
-            loadingDiv.id = 'loading-indicator';
-            loadingDiv.className = 'flex items-center my-4';
-            loadingDiv.innerHTML = `
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            // Kontrola limitu správ pre skúšobnú verziu a cooldown
+            const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
+            const isSubscribed = subscriptionData && new Date(subscriptionData.expiryDate) > new Date();
+            let isAllowed = false;
+
+            if (isSubscribed) {
+                let paidMessageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY_PAID) || 0;
+                if (paidMessageCount < MAX_MESSAGES_PAID) {
+                    paidMessageCount++;
+                    saveToLocalStorage(MESSAGE_COUNT_KEY_PAID, paidMessageCount);
+                    isAllowed = true;
+                    messageLimitStatus.innerText = `Platená verzia: ${MAX_MESSAGES_PAID - paidMessageCount} správ zostáva.`;
+                }
+            } else {
+                let freeMessageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY_FREE) || 0;
+                if (freeMessageCount < MAX_MESSAGES_FREE) {
+                    freeMessageCount++;
+                    saveToLocalStorage(MESSAGE_COUNT_KEY_FREE, freeMessageCount);
+                    isAllowed = true;
+                    messageLimitStatus.innerText = `Skúšobná verzia: ${MAX_MESSAGES_FREE - freeMessageCount} správ zostáva.`;
+                } else if (!isCooldownActive) {
+                    messagesSinceCooldown++;
+                    if (messagesSinceCooldown >= MESSAGES_BEFORE_COOLDOWN) {
+                        startCooldown();
+                    } else {
+                        isAllowed = true;
+                    }
+                }
+            }
+
+            if (!isAllowed) {
+                if (!isCooldownActive) {
+                    showModal("Limit správ prekročený", "Pre skúšobnú verziu ste vyčerpali limit správ.");
+                }
+                return;
+            }
+
+            appendUserMessage(message);
+            userInput.value = '';
+            
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'flex items-center my-4';
+            loadingIndicator.innerHTML = `
                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
                     <i class="fa-solid fa-robot text-white"></i>
                 </div>
-                <div class="p-3 bg-gray-800/70 rounded-2xl rounded-bl-none shadow-md">
+                <div class="flex items-center space-x-2 bg-gray-800/70 p-3 rounded-2xl rounded-bl-none shadow-md">
                     <div class="dot-flashing"></div>
                 </div>
             `;
-            chatWindow.appendChild(loadingDiv);
+            chatWindow.appendChild(loadingIndicator);
             chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
 
-        // Funkcia na skrytie indikátora načítania
-        function hideLoadingIndicator() {
-            const loadingDiv = document.getElementById('loading-indicator');
-            if (loadingDiv) {
-                loadingDiv.remove();
-            }
-        }
+            const userQuery = message;
+            
+            // Pripravíme kontext pre AI o aktuálnom dátume a meninách
+            const calendarInfo = getCalendarInfo();
+            const fullQuery = `${calendarInfo}\n\n${userQuery}`;
 
-        /**
-         * Volá API Gemini na generovanie textu.
-         * @param {string} prompt Text od používateľa.
-         * @returns {Promise<string>} Generovaný text.
-         */
-        async function generateText(prompt) {
+            const payload = {
+                contents: [
+                    ...chatHistory,
+                    { role: "user", parts: [{ text: fullQuery }] }
+                ],
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: "Si nápomocný a priateľský asistent hovoriaci po slovensky. Používaj informácie o dátume a meninách v tvojich odpovediach, ak je to relevantné." }]
+                }
+            };
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
-            let payload = { contents: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] };
 
             try {
-                const response = await makeApiCall(apiUrl, payload, "generovanie textu cez Gemini");
+                const response = await makeApiCall(apiUrl, payload, "generovanie obsahu cez Gemini");
                 const result = await response.json();
-                
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    return result.candidates[0].content.parts[0].text;
-                } else {
-                    throw new Error("Neplatná textová odpoveď od Gemini API.");
+                let aiResponseText = 'Prepáč, momentálne neviem spracovať tvoju požiadavku.';
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                    aiResponseText = result.candidates[0].content.parts[0].text;
                 }
+                loadingIndicator.remove();
+                appendAiMessage(aiResponseText);
             } catch (error) {
-                console.error("Chyba pri generovaní textu Gemini:", error);
-                throw error;
+                console.error("Chyba pri získavaní odpovede od AI:", error);
+                loadingIndicator.remove();
+                appendAiMessage("Prepáč, vyskytla sa chyba pri komunikácii s AI. Skús to prosím neskôr.");
             }
         }
-
-        /**
-         * Hlavná funkcia na odoslanie správy.
-         */
-        async function sendMessage() {
-            if (isCooldownActive) {
-                showModal("Časový limit", "Musíte počkať, kým neskončí časový limit.");
-                return;
-            }
-
-            const message = userInput.value.trim();
-            if (message === '') return;
-            
-            // Kontrola limitu správ
-            const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
-            const isPremium = subscriptionData && new Date(subscriptionData.expiryDate) > new Date();
-            
-            let messageCount;
-            let maxMessages;
-            let messageCountKey;
-
-            if (isPremium) {
-                messageCountKey = MESSAGE_COUNT_KEY_PAID;
-                messageCount = loadFromLocalStorage(messageCountKey) || 0;
-                maxMessages = MAX_MESSAGES_PAID;
-            } else {
-                messageCountKey = MESSAGE_COUNT_KEY_FREE;
-                messageCount = loadFromLocalStorage(messageCountKey) || 0;
-                maxMessages = MAX_MESSAGES_FREE;
-            }
-
-            if (messageCount >= maxMessages) {
-                if (isPremium) {
-                    showModal("Limit správ prekročený", `Dosiahli ste limit ${MAX_MESSAGES_PAID} správ. Vaše predplatné bolo vyčerpané. Pre ďalšie používanie je potrebné predplatné obnoviť.`);
-                } else {
-                    showModal("Limit správ prekročený", `Dosiahli ste limit ${MAX_MESSAGES_FREE} správ pre skúšobnú verziu. Pre neobmedzený prístup je potrebné zaplatiť predplatné.`);
-                }
-                return;
-            }
-
-            // Očistenie a zobrazenie správy od používateľa
-            userInput.value = '';
-            appendUserMessage(message);
-
-            // Zobrazenie indikátora načítania
-            showLoadingIndicator();
-
-            try {
-                // Generovanie odpovede AI
-                const aiResponse = await generateText(message);
-                
-                // Zobrazenie odpovede AI
-                hideLoadingIndicator();
-                appendAiMessage(aiResponse, ttsApiToggle.checked);
-
-                // Inkrementácia počítadla správ
-                saveToLocalStorage(messageCountKey, messageCount + 1);
-
-                // Aktualizácia stavu limitu správ
-                if (isPremium) {
-                    messageLimitStatus.innerText = `Platená verzia: ${Math.max(0, MAX_MESSAGES_PAID - (messageCount + 1))} správ zostáva.`;
-                } else {
-                    messageLimitStatus.innerText = `Skúšobná verzia: ${Math.max(0, MAX_MESSAGES_FREE - (messageCount + 1))} správ zostáva.`;
-                }
-
-                // Kontrola a spustenie cool-downu
-                messagesSinceCooldown++;
-                if (!isPremium && messagesSinceCooldown >= MESSAGES_BEFORE_COOLDOWN) {
-                    startCooldown();
-                }
-
-            } catch (error) {
-                console.error('Chyba pri posielaní správy:', error);
-                hideLoadingIndicator();
-                appendAiMessage('Prepáčte, vyskytla sa chyba pri komunikácii s AI. Skúste to prosím neskôr.', false);
-            }
-        }
-
-        // --- Event Listenery ---
         
+        // Listenery udalostí
         payButton.addEventListener('click', simulatePayment);
         sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
                 sendMessage();
             }
         });
-
-        // Kontrola predplatného pri načítaní stránky
-        window.onload = () => {
-            checkSubscription();
-        };
+        
+        // Inicializácia pri načítaní stránky
+        document.addEventListener('DOMContentLoaded', checkSubscription);
 
     </script>
 </body>
