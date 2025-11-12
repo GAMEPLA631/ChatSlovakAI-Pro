@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak AI Pro</title>
+    <title>ChatSlovak AI - Limitovaná Verzia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        
-        /* Základné štýly tela stránky a pozadia */
         body {
             font-family: 'Inter', sans-serif;
+            /* Používame externý obrázok na pozadie */
             background-image: url('https://images.deepai.org/art-image/31cd000b7f3148918f85f76a1b8604f7/ai-495f1e.jpg');
             background-size: cover;
             background-position: center;
@@ -19,14 +18,13 @@
             color: #E2E8F0;
             margin: 0;
             padding: 0;
+            user-select: none;
         }
-
-        /* Kontajner aplikácie s rozostreným pozadím */
-        .app-container {
+        .chat-container {
             position: relative;
             z-index: 10;
         }
-        .app-container::before {
+        .chat-container::before {
             content: '';
             position: absolute;
             top: 0;
@@ -38,13 +36,12 @@
             border-radius: 1.5rem;
             z-index: -1;
         }
-
-        /* Okno správ */
         .message-container {
             max-height: 70vh;
             overflow-y: auto;
             scroll-behavior: smooth;
         }
+        /* Scrollbar styling */
         .message-container::-webkit-scrollbar {
             width: 8px;
         }
@@ -56,20 +53,6 @@
             background-color: rgba(255, 255, 255, 0.3);
             border-radius: 10px;
         }
-        
-        /* Rôzne štýly správ */
-        .user-message {
-            background-color: rgba(67, 56, 202, 0.7);
-            color: white;
-            border-bottom-right-radius: 0;
-        }
-        .ai-message {
-            background-color: rgba(31, 41, 55, 0.7);
-            color: #E2E8F0;
-            border-bottom-left-radius: 0;
-        }
-
-        /* Indikátor načítania (bodky) */
         .dot-flashing {
             position: relative;
             width: 10px;
@@ -85,24 +68,18 @@
             display: inline-block;
             position: absolute;
             top: 0;
-        }
-        .dot-flashing::before {
-            left: -15px;
             width: 10px;
             height: 10px;
             border-radius: 5px;
             background-color: #9880ff;
-            color: #9880ff;
+        }
+        .dot-flashing::before {
+            left: -15px;
             animation: dot-flashing 1s infinite alternate;
             animation-delay: 0s;
         }
         .dot-flashing::after {
             left: 15px;
-            width: 10px;
-            height: 10px;
-            border-radius: 5px;
-            background-color: #9880ff;
-            color: #9880ff;
             animation: dot-flashing 1s infinite alternate;
             animation-delay: 1s;
         }
@@ -110,540 +87,111 @@
             0% { background-color: #9880ff; }
             50%, 100% { background-color: #eee; }
         }
-
-        /* Prepínač */
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 48px;
-            height: 28px;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #4b5563; /* Sivá farba pre vypnutý stav */
-            transition: .4s;
-            border-radius: 28px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 20px;
-            width: 20px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-            transform: translateX(0);
-        }
-        input:checked + .slider {
-            background-color: #9880ff; /* Fialová farba pre zapnutý stav */
-        }
-        input:checked + .slider:before {
-            transform: translateX(20px);
-        }
-
-        /* Animácie pre modálne okná */
-        @keyframes fade-in-up {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .animate-fade-in-up {
-            animation: fade-in-up 0.5s ease-out;
-        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
-    <!-- Kontajner pre modálne okno -->
-    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden">
-        <div id="modal-content" class="bg-gray-800 p-6 rounded-xl text-center shadow-lg w-full max-w-sm animate-fade-in-up">
-            <h3 id="modal-title" class="text-xl font-bold text-white mb-2"></h3>
-            <p id="modal-message" class="text-gray-300 mb-6"></p>
-            <button id="modal-close-button" class="w-full p-3 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-full transition-all duration-200">OK</button>
-        </div>
-    </div>
 
-    <main class="w-full max-w-3xl flex flex-col h-[90vh] app-container rounded-3xl p-6 shadow-2xl">
+    <main class="w-full max-w-3xl flex flex-col h-[90vh] chat-container rounded-3xl p-6 shadow-2xl">
         
-        <!-- Hlavička aplikácie -->
         <header class="text-center mb-6">
-            <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak AI Pro</h1>
-            <p class="text-sm text-gray-300 mt-2" id="subscription-status"></p>
-            <!-- Nový element pre zobrazenie počtu správ -->
-            <p class="text-sm font-semibold text-purple-400 mt-1" id="message-limit-status"></p>
+            <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak AI</h1>
+            <p class="text-sm text-gray-300 mt-2">Váš časovo obmedzený spoločník</p>
+            <!-- Časový limit používania -->
+            <div id="usage-status" class="mt-3 text-sm font-medium p-2 rounded-lg bg-purple-900/50 text-yellow-300 border border-purple-700">
+                <!-- Status zostávajúceho času bude vložený pomocou JavaScriptu -->
+            </div>
         </header>
 
-        <!-- Platobné rozhranie (skryté predvolene) -->
-        <div id="payment-view" class="flex-grow flex flex-col items-center justify-center text-center p-8 hidden">
-            <h2 class="text-3xl font-bold text-white mb-4">Predplatné vypršalo</h2>
-            <p class="text-lg text-gray-300 mb-6">Pre ďalšie používanie je potrebné zaplatiť poplatok.</p>
-            <div class="bg-gray-800/70 p-6 rounded-xl w-full max-w-sm flex flex-col items-center shadow-lg">
-                <p id="current-price-display" class="text-4xl font-extrabold text-purple-400 mb-4">1.00 €</p>
-                <p class="text-sm text-gray-400 mb-6">za 30 dní prístupu</p>
-                
-                <!-- Formulár pre platbu kartou (simulácia) -->
-                <div class="w-full space-y-4 mb-4">
-                    <h3 class="text-lg font-semibold text-gray-200">Platba kartou</h3>
-                    <input type="text" id="card-number" placeholder="Číslo karty" class="w-full p-3 bg-gray-900/60 text-white rounded-lg border border-gray-700/50 focus:outline-none focus:ring-1 focus:ring-purple-600 transition-all duration-200">
-                    <div class="flex space-x-2">
-                        <input type="text" id="expiry-date" placeholder="MM/YY" class="w-1/2 p-3 bg-gray-900/60 text-white rounded-lg border border-gray-700/50 focus:outline-none focus:ring-1 focus:ring-purple-600 transition-all duration-200">
-                        <input type="text" id="cvv-code" placeholder="CVV" class="w-1/2 p-3 bg-gray-900/60 text-white rounded-lg border border-gray-700/50 focus:outline-none focus:ring-1 focus:ring-purple-600 transition-all duration-200">
-                    </div>
+        <div id="chat-window" class="message-container flex-grow mb-4 p-4 space-y-4">
+            <!-- Počiatočná AI správa -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                    <i class="fa-solid fa-robot text-white"></i>
                 </div>
-
-                <!-- Formulár pre PaySafeCard (simulácia) -->
-                <div class="w-full space-y-4 mb-6">
-                    <h3 class="text-lg font-semibold text-gray-200">Alebo PaySafeCard</h3>
-                    <input type="text" id="paysafe-code" placeholder="16-miestny kód PaySafeCard" class="w-full p-3 bg-gray-900/60 text-white rounded-lg border border-gray-700/50 focus:outline-none focus:ring-1 focus:ring-purple-600 transition-all duration-200">
+                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
+                    <p>Ahoj! Som pripravený na chat. Máte 1 hodinu nepretržitého používania.</p>
                 </div>
-                
-                <p id="payment-error" class="text-red-400 text-sm mb-4 hidden">Prosím, vyplňte aspoň jeden platobný údaj.</p>
-
-                <button id="pay-button" class="w-full p-4 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900">
-                    Zaplatiť teraz
+                <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
+                    <i class="fa-solid fa-volume-high"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Chatovacie rozhranie -->
-        <div id="chat-view" class="flex flex-col flex-grow hidden">
-            <!-- Okno chatu pre zobrazenie správ -->
-            <div id="chat-window" class="message-container flex-grow mb-4 p-4 space-y-4 rounded-xl">
-                <!-- Správy sa budú vkladať sem cez JavaScript -->
-            </div>
-
-            <!-- Vstupná oblasť pre písanie správ a prepínač -->
-            <div class="flex flex-col space-y-2 mt-auto">
-                <p id="cooldown-status" class="text-sm font-bold text-red-400 text-center hidden"></p>
-                <div class="flex items-center space-x-3">
-                    <label class="toggle-switch flex-shrink-0">
-                        <input type="checkbox" id="tts-api-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                    <input type="text" id="user-input" placeholder="Napíšte svoju správu..." class="flex-grow p-4 bg-gray-900/60 text-white placeholder-gray-400 rounded-full border border-gray-700/50 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-200">
-                    <button id="send-button" class="p-4 bg-purple-700 hover:bg-purple-800 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
+        <div class="flex items-center space-x-3 mt-auto">
+            <!-- Tlačidlo pre súbor odstránené -->
+            
+            <input type="text" id="user-input" placeholder="Napíšte svoju správu..." class="flex-grow p-4 bg-gray-900/60 text-white placeholder-gray-400 rounded-full border border-gray-700/50 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-200">
+            <button id="send-button" class="p-4 bg-purple-700 hover:bg-purple-800 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
         </div>
     </main>
 
     <script>
-        // DOM prvky
-        const paymentView = document.getElementById('payment-view');
-        const chatView = document.getElementById('chat-view');
-        const payButton = document.getElementById('pay-button');
         const chatWindow = document.getElementById('chat-window');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
-        const ttsApiToggle = document.getElementById('tts-api-toggle');
-        const subscriptionStatus = document.getElementById('subscription-status');
-        const cardNumberInput = document.getElementById('card-number');
-        const paysafeCodeInput = document.getElementById('paysafe-code');
-        const paymentError = document.getElementById('payment-error');
-        const currentPriceDisplay = document.getElementById('current-price-display');
-        const messageLimitStatus = document.getElementById('message-limit-status');
-        const cooldownStatus = document.getElementById('cooldown-status'); // Nový element
+        const usageStatusElement = document.getElementById('usage-status'); // Nová referencia
 
-        // Modálne prvky
-        const modalBackdrop = document.getElementById('modal-backdrop');
-        const modalTitle = document.getElementById('modal-title');
-        const modalMessage = document.getElementById('modal-message');
-        const modalCloseButton = document.getElementById('modal-close-button');
-
-        // Stavové premenné
         let chatHistory = [];
-        // API kľúč pre Gemini. V prostredí Canvas sa nastaví automaticky.
-        const geminiApiKey = "AIzaSyDGZFoDcXgHLrhyfada9ZdlrHTnyrfAn2U";
-        let audioInstance = null;
-        const SUBSCRIPTION_KEY = 'premium-chat-subscription';
+        const apiKey = ""; 
 
-        // --- KONŠTANTY PRE LIMITY SPRÁV (NOVÉ A UPRAVENÉ) ---
-        const MAX_MESSAGES_PAID = 100; // Maximálny počet správ pre platených používateľov
-        const MAX_MESSAGES_FREE = 5; // Maximálny počet správ pre neregistrovaných (obmedzená verzia)
-        // Kľúče pre lokálne úložisko pre počet správ
-        const MESSAGE_COUNT_KEY_FREE = 'chat-message-count-free';
-        const MESSAGE_COUNT_KEY_PAID = 'chat-message-count-paid';
-        // --- KONIEC NOVÝCH KONŠTÁNT ---
-        
-        // --- NOVÉ PREMENNÉ PRE NÁHODNÝ ČASOVÝ LIMIT (COOLDOWN) ---
-        const MESSAGES_BEFORE_COOLDOWN = 5; // Počet správ pred spustením cool-downu
-        let messagesSinceCooldown = 0; // Počet správ od posledného cool-downu
-        let isCooldownActive = false;
-        let cooldownEndTime = null;
-        let cooldownInterval = null; // Na uloženie intervalu pre aktualizáciu časovača
-        // --- KONIEC NOVÝCH PREMENNÝCH ---
+        // --- LOGIKA ČASOVÉHO LIMITU ---
+        // Ukladanie stavu do 'localStorage' zabezpečuje, že limit bude pretrvávať aj po zatvorení prehliadača.
+        const usageLimitMs = 60 * 60 * 1000; // 1 hodina v milisekundách
+        let usageStartTime = localStorage.getItem('chatUsageStartTime');
 
-        // --- NOVÁ ČASŤ: Funkcia na získanie informácií o kalendári a meninách ---
-        const slovakNameDays = {
-            '01-01': 'Nový rok, Alexandra', '01-02': 'Karina', '01-03': 'Daniela', '01-04': 'Drahoslav', '01-05': 'Andrea',
-            '01-06': 'Antónia', '01-07': 'Bohuslava', '01-08': 'Severín', '01-09': 'Alexej', '01-10': 'Dáša',
-            '01-11': 'Malvína', '01-12': 'Ernest', '01-13': 'Rastislav', '01-14': 'Radovan', '01-15': 'Dobroslav',
-            '01-16': 'Kristína', '01-17': 'Nataša', '01-18': 'Bohdana', '01-19': 'Drahomíra', '01-20': 'Dalibor',
-            '01-21': 'Vincent', '01-22': 'Zora', '01-23': 'Miloš', '01-24': 'Timotej', '01-25': 'Gejza',
-            '01-26': 'Tamara', '01-27': 'Bohuš', '01-28': 'Alfonz', '01-29': 'Gašpar', '01-30': 'Ema',
-            '01-31': 'Emil', '02-01': 'Tatiana', '02-02': 'Erik', '02-03': 'Blažej', '02-04': 'Veronika',
-            '02-05': 'Agáta', '02-06': 'Dorota', '02-07': 'Vanda', '02-08': 'Zoja', '02-09': 'Zdenko',
-            '02-10': 'Gabriela', '02-11': 'Dezider', '02-12': 'Perla', '02-13': 'Arpád', '02-14': 'Valentín',
-            '02-15': 'Pravoslav', '02-16': 'Ľubomír', '02-17': 'Milada', '02-18': 'Gizela', '02-19': 'Vratko',
-            '02-20': 'Vlasta', '02-21': 'Etela', '02-22': 'Roman', '02-23': 'Matej', '02-24': 'Jaroslav',
-            '02-25': 'Viktor', '02-26': 'Patrik', '02-27': 'Albin', '02-28': 'Viktor', '02-29': 'Oskar',
-            '03-01': 'Albín', '03-02': 'Anežka', '03-03': 'Bohumil', '03-04': 'Kazimír', '03-05': 'Fridrich',
-            '03-06': 'Radoslav', '03-07': 'Tomáš', '03-08': 'Alan', '03-09': 'Františka', '03-10': 'Viera',
-            '03-11': 'Konštantín', '03-12': 'Gregor', '03-13': 'Matilda', '03-14': 'Radka', '03-15': 'Svetlana',
-            '03-16': 'Boleslav', '03-17': 'Ľubica', '03-18': 'Eduard', '03-19': 'Jozef', '03-20': 'Víťazoslav',
-            '03-21': 'Blahoslav', '03-22': 'Beňadik', '03-23': 'Dominik', '03-24': 'Elena', '03-25': 'Marián',
-            '03-26': 'Emanuel', '03-27': 'Alena', '03-28': 'Soňa', '03-29': 'Miroslav', '03-30': 'Vieroslava',
-            '03-31': 'Benjamín', '04-01': 'Hugo', '04-02': 'Zita', '04-03': 'Richard', '04-04': 'Izidor',
-            '04-05': 'Miroslava', '04-06': 'Irena', '04-07': 'Zlatko', '04-08': 'Dana', '04-09': 'Milena',
-            '04-10': 'Igor', '04-11': 'Július', '04-12': 'Estera', '04-13': 'Aurel', '04-14': 'Justín',
-            '04-15': 'Fedor', '04-16': 'Ivana', '04-17': 'Henrich', '04-18': 'Valér', '04-19': 'Jarmila',
-            '04-20': 'Vojtech', '04-21': 'Marcel', '04-22': 'Oto', '04-23': 'Juraj', '04-24': 'Marek',
-            '04-25': 'Jaroslava', '04-26': 'Jaroslava', '04-27': 'Jana', '04-28': 'Valéria', '04-29': 'Prvoslava',
-            '04-30': 'Anastázia', '05-01': 'Filip', '05-02': 'Hermína', '05-03': 'Tamara', '05-04': 'Viktória',
-            '05-05': 'Vlastislav', '05-06': 'Tibor', '05-07': 'Ján', '05-08': 'Monika', '05-09': 'Mária',
-            '05-10': 'Viliam', '05-11': 'Bohumil', '05-12': 'Pankrác', '05-13': 'Servác', '05-14': 'Bonifác',
-            '05-15': 'Žofia', '05-16': 'Svetozár', '05-17': 'Diana', '05-18': 'Viktor', '05-19': 'Mária',
-            '05-20': 'Bernard', '05-21': 'Dušan', '05-22': 'Vilma', '05-23': 'Júlia', '05-24': 'Ela',
-            '05-25': 'Urbán', '05-26': 'Alica', '05-27': 'Liliana', '05-28': 'Viliam', '05-29': 'Vilma',
-            '05-30': 'Júlia', '05-31': 'Ela', '06-01': 'Jana', '06-02': 'Karol', '06-03': 'Gizela',
-            '06-04': 'Emil', '06-05': 'Blanka', '06-06': 'Norbert', '06-07': 'Róbert', '06-08': 'Medard',
-            '06-09': 'Zdenko', '06-10': 'Margaréta', '06-11': 'Dobroslava', '06-12': 'Anton', '06-13': 'Gita',
-            '06-14': 'Vasil', '06-15': 'Vít', '06-16': 'Blanka', '06-17': 'Adolf', '06-18': 'Miloš',
-            '06-19': 'Alena', '06-20': 'Valéria', '06-21': 'Alojz', '06-22': 'Paulína', '06-23': 'Marián',
-            '06-24': 'Ján', '06-25': 'Adriana', '06-26': 'Ladislav', '06-27': 'Branislav', '06-28': 'Peter',
-            '06-29': 'Pavol', '06-30': 'Milada', '07-01': 'Diana', '07-02': 'Berta', '07-03': 'Marián',
-            '07-04': 'Ján', '07-05': 'Cyril', '07-06': 'Metod', '07-07': 'Renáta', '07-08': 'Eliáš',
-            '07-09': 'Oliver', '07-10': 'Amália', '07-11': 'Milota', '07-12': 'Nina', '07-13': 'Alžbeta',
-            '07-14': 'Eva', '07-15': 'Henrieta', '07-16': 'Drahomír', '07-17': 'Bohuslav', '07-18': 'Kamila',
-            '07-19': 'Vladimír', '07-20': 'Magdaléna', '07-21': 'Daniel', '07-22': 'Oľga', '07-23': 'Libor',
-            '07-24': 'Vladislav', '07-25': 'Jakub', '07-26': 'Anna', '07-27': 'Božena', '07-28': 'Krištof',
-            '07-29': 'Marta', '07-30': 'Ignác', '07-31': 'Emil', '08-01': 'Božidara', '08-02': 'Gustáv',
-            '08-03': 'Bohumil', '08-04': 'Dominik', '08-05': 'Hana', '08-06': 'Timotej', '08-07': 'Tomáš',
-            '08-08': 'Oskár', '08-09': 'Ľubomír', '08-10': 'Vavrinec', '08-11': 'Zuzana', '08-12': 'Darina',
-            '08-13': 'Zuzana', '08-14': 'Elena', '08-15': 'Marcela', '08-16': 'Mariana', '08-17': 'Elena',
-            '08-18': 'Ľudovít', '08-19': 'Vladimír', '08-20': 'Filip', '08-21': 'Bernard', '08-22': 'Jana',
-            '08-23': 'Júlia', '08-24': 'Bartolomej', '08-25': 'Ľudovít', '08-26': 'Branislav', '08-27': 'Katarína',
-            '08-28': 'Augustín', '08-29': 'Želmíra', '08-30': 'Eufémia', '08-31': 'Róbert', '09-01': 'Drahoslava',
-            '09-02': 'Linda', '09-03': 'Belo', '09-04': 'Rozália', '09-05': 'Regína', '09-06': 'Alica',
-            '09-07': 'Marián', '09-08': 'Miroslav', '09-09': 'Margaréta', '09-10': 'Viera', '09-11': 'Vladimír',
-            '09-12': 'Jozefína', '09-13': 'Ľubomír', '09-14': 'Ivana', '09-15': 'Igor', '09-16': 'Kristína',
-            '09-17': 'Ludmila', '09-18': 'Gabriela', '09-19': 'Miroslava', '09-20': 'Matúš', '09-21': 'František',
-            '09-22': 'Ondrej', '09-23': 'Amália', '09-24': 'Anna', '09-25': 'Vladislav', '09-26': 'Justína',
-            '09-27': 'Vladimír', '09-28': 'Václav', '09-29': 'Michaela', '09-30': 'Jaroslav', '10-01': 'Arnold',
-            '10-02': 'Levoslav', '10-03': 'Stela', '10-04': 'František', '10-05': 'Viera', '10-06': 'Natália',
-            '10-07': 'Sergej', '10-08': 'Zuzana', '10-09': 'Oľga', '10-10': 'Tibor', '10-11': 'Slavomír',
-            '10-12': 'Kvetoslava', '10-13': 'Timotej', '10-14': 'Alžbeta', '10-15': 'Terézia', '10-16': 'Vladislav',
-            '10-17': 'Hedviga', '10-18': 'Lukáš', '10-19': 'Vendelín', '10-20': 'Uršula', '10-21': 'Šimon',
-            '10-22': 'Ondrej', '10-23': 'Michal', '10-24': 'Vlasta', '10-25': 'Dušan', '10-26': 'Demeter',
-            '10-27': 'Terézia', '10-28': 'Marek', '10-29': 'Alžbeta', '10-30': 'Vladimír', '10-31': 'Silvia',
-            '11-01': 'Denis', '11-02': 'Vlasta', '11-03': 'Hubert', '11-04': 'Karol', '11-05': 'Imrich',
-            '11-06': 'Renáta', '11-07': 'Bohdan', '11-08': 'Róbert', '11-09': 'Mária', '11-10': 'Kamil',
-            '11-11': 'Martin', '11-12': 'Svätopluk', '11-13': 'Stanislav', '11-14': 'Emil', '11-15': 'Leopold',
-            '11-16': 'Agáta', '11-17': 'Želmíra', '11-18': 'Ondrej', '11-19': 'Mária', '11-20': 'Stanislava',
-            '11-21': 'Miloslav', '11-22': 'Cecília', '11-23': 'Klement', '11-24': 'Emília', '11-25': 'Katarína',
-            '11-26': 'Kornel', '11-27': 'Milan', '11-28': 'Henrieta', '11-29': 'Vratislav', '11-30': 'Andrej',
-            '12-01': 'Drahoslav', '12-02': 'Blanka', '12-03': 'Ida', '12-04': 'Barbora', '12-05': 'Júlia',
-            '12-06': 'Mikuláš', '12-07': 'Ambroz', '12-08': 'Marína', '12-09': 'Izabela', '12-10': 'Radovan',
-            '12-11': 'Vladimír', '12-12': 'Emília', '12-13': 'Lucia', '12-14': 'Branislava', '12-15': 'Ivica',
-            '12-16': 'Albína', '12-17': 'Kornélia', '12-18': 'Silvester', '12-19': 'Dagmar', '12-20': 'Bohdan',
-            '12-21': 'Milada', '12-22': 'Vlasta', '12-23': 'Eva', '12-24': 'Adam', '12-25': 'Štefan',
-            '12-26': 'Štefan', '12-27': 'Ján', '12-28': 'Anna', '12-29': 'Milada', '12-30': 'Eugen',
-            '12-31': 'Silvester'
-        };
-
-        /**
-         * Získa aktuálne informácie o dni v týždni, dátume a meninách na Slovensku.
-         * @returns {string} Sformátovaný reťazec s informáciami.
-         */
-        function getCalendarInfo() {
-            const today = new Date();
-            const dayOfWeek = today.toLocaleDateString('sk-SK', { weekday: 'long' });
-            const day = today.getDate();
-            const month = today.getMonth() + 1;
-            const year = today.getFullYear();
-            const formattedMonth = today.toLocaleDateString('sk-SK', { month: 'long' });
-
-            const monthStr = month < 10 ? `0${month}` : `${month}`;
-            const dayStr = day < 10 ? `0${day}` : `${day}`;
-            const key = `${monthStr}-${dayStr}`;
-            const nameDay = slovakNameDays[key] || 'nie je známe';
-
-            return `(Kontext pre teba: Dnes je ${dayOfWeek}, ${day}. ${formattedMonth} ${year}. Meniny má ${nameDay}.)`;
-        }
-        // --- KONIEC NOVEJ ČASTI ---
-
-        // --- Funkcie pre modálne okná namiesto alert() ---
-        /**
-        * Zobrazí modálne okno s daným titulom a správou.
-        * @param {string} title Titulok modálneho okna.
-        * @param {string} message Správa zobrazená v modálnom okne.
-        * @param {function} onCloseCallback Funkcia, ktorá sa má vykonať po zatvorení modálneho okna.
-        */
-        function showModal(title, message, onCloseCallback = null) {
-            modalTitle.innerText = title;
-            modalMessage.innerText = message;
-            modalBackdrop.classList.remove('hidden');
-
-            const handleClose = () => {
-                modalBackdrop.classList.add('hidden');
-                modalCloseButton.removeEventListener('click', handleClose);
-                if (onCloseCallback) {
-                    onCloseCallback();
-                }
-            };
-            modalCloseButton.addEventListener('click', handleClose);
+        // Inicializácia času používania
+        if (!usageStartTime || Date.now() - parseInt(usageStartTime, 10) >= usageLimitMs) {
+            // Ak neexistuje alebo vypršal, nastavíme čas začiatku na aktuálny čas.
+            usageStartTime = Date.now();
+            localStorage.setItem('chatUsageStartTime', usageStartTime);
+        } else {
+            // Prevod uloženej hodnoty z textu na číslo
+            usageStartTime = parseInt(usageStartTime, 10);
         }
 
-        // Zobrazí chybovú správu na obrazovke
-        function showError(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'absolute bottom-20 left-1/2 -translate-x-1/2 p-4 bg-red-600 text-white rounded-lg shadow-xl animate-fade-in-up transition-opacity duration-300 z-50';
-            errorDiv.innerText = message;
-            document.body.appendChild(errorDiv);
-            setTimeout(() => {
-                errorDiv.classList.add('opacity-0');
-                errorDiv.addEventListener('transitionend', () => errorDiv.remove());
-            }, 3000);
-        }
-
-        // --- Funkcie pre lokálne úložisko ---
-        
-        /**
-        * Uloží dáta do lokálneho úložiska.
-        * @param {string} key Kľúč na uloženie.
-        * @param {any} data Dáta na uloženie.
-        */
-        function saveToLocalStorage(key, data) {
-            try {
-                localStorage.setItem(key, JSON.stringify(data));
-            } catch (error) {
-                console.error("Chyba pri ukladaní do lokálneho úložiska:", error);
-            }
-        }
-
-        /**
-        * Načíta dáta z lokálneho úložiska.
-        * @param {string} key Kľúč na načítanie.
-        * @returns {any | null} Načítané dáta alebo null.
-        */
-        function loadFromLocalStorage(key) {
-            try {
-                const data = localStorage.getItem(key);
-                return data ? JSON.parse(data) : null;
-            } catch (error) {
-                console.error("Chyba pri načítavaní z lokálneho úložiska:", error);
-                return null;
-            }
-        }
-        
-        // --- Funkcie pre správu predplatného a dynamické ceny ---
-
-        /**
-        * Skontroluje stav predplatného a zobrazí príslušné rozhranie.
-        */
-        function checkSubscription() {
-            const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
-            const now = new Date();
+        // Funkcia na formátovanie času (H:MM:SS)
+        function formatTime(ms) {
+            const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
             
-            if (subscriptionData && new Date(subscriptionData.expiryDate) > now) {
-                // Predplatné je aktívne
-                chatView.classList.remove('hidden');
-                paymentView.classList.add('hidden');
-                
-                const expiryDate = new Date(subscriptionData.expiryDate);
-                const daysRemaining = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-                subscriptionStatus.innerText = `Predplatné je aktívne. Zostáva ${daysRemaining} dní.`;
+            const format = (val) => String(val).padStart(2, '0');
 
-                // Zobrazenie limitu pre platenú verziu (100 správ)
-                let paidMessageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY_PAID) || 0;
-                messageLimitStatus.innerText = `Platená verzia: ${Math.max(0, MAX_MESSAGES_PAID - paidMessageCount)} správ zostáva.`;
-                
-                cooldownStatus.classList.add('hidden'); // Skrytie stavu cooldown pre premium používateľov
+            return `${hours}:${format(minutes)}:${format(seconds)}`;
+        }
 
-                // Vymaže sa existujúca história a pridá sa nová úvodná správa
-                chatHistory = [];
-                chatWindow.innerHTML = '';
-                appendAiMessage("Ahoj! Poďme chatovať. Generovanie hlasu je zapnuté.", ttsApiToggle.checked, false);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-                
+        // Funkcia na aktualizáciu zobrazenia času
+        function updateTimeDisplay() {
+            const elapsed = Date.now() - usageStartTime;
+            const remaining = usageLimitMs - elapsed;
+            const isExpired = remaining <= 0;
+
+            if (isExpired) {
+                usageStatusElement.classList.remove('text-yellow-300');
+                usageStatusElement.classList.add('text-red-400');
+                usageStatusElement.innerHTML = `<i class="fa-solid fa-hourglass-end"></i> Váš 1-hodinový limit vypršal! Písanie je zablokované.`;
+                userInput.disabled = true;
+                sendButton.disabled = true;
             } else {
-                // Predplatné vypršalo alebo neexistuje
-                chatView.classList.add('hidden');
-                paymentView.classList.remove('hidden');
-
-                // Vypočítanie novej ceny
-                const lastPaidPrice = subscriptionData ? subscriptionData.lastPaidPrice : 0;
-                let newPrice = parseFloat(lastPaidPrice) + 1.00;
-                
-                // Kontrola maximálnej ceny a reset
-                const maxPrice = 1500.00;
-                if (newPrice > maxPrice) {
-                    newPrice = 1.00;
-                }
-
-                currentPriceDisplay.innerText = `${newPrice.toFixed(2)} €`;
-                subscriptionStatus.innerText = `Predplatné vypršalo.`;
-
-                // Zobrazenie limitu pre skúšobnú verziu (5 správ)
-                let freeMessageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY_FREE) || 0;
-                messageLimitStatus.innerText = `Skúšobná verzia: ${Math.max(0, MAX_MESSAGES_FREE - freeMessageCount)} správ zostáva.`;
-
-                // Vymaže sa existujúca história a pridá sa nová úvodná správa
-                chatHistory = [];
-                chatWindow.innerHTML = '';
-                appendAiMessage(`Ahoj! Vyskúšajte ChatSlovak AI Pro zadarmo. Máte k dispozícii ${MAX_MESSAGES_FREE} správ.`, ttsApiToggle.checked, false);
-            }
-        }
-        
-        /**
-        * Simuluje platobný proces.
-        */
-        function simulatePayment() {
-            const cardNumber = cardNumberInput.value.trim();
-            const paysafeCode = paysafeCodeInput.value.trim();
-
-            if (cardNumber === '' && paysafeCode === '') {
-                paymentError.classList.remove('hidden');
-                return;
-            }
-            
-            paymentError.classList.add('hidden');
-            
-            // SIMULÁCIA: V reálnej aplikácii by sa tu volala platobná brána.
-            // My len vytvoríme predplatné v lokálnom úložisku s novou cenou.
-            const now = new Date();
-            const expiryDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 dní odteraz
-            const currentPrice = parseFloat(currentPriceDisplay.innerText.replace(' €', ''));
-
-            const subscriptionData = {
-                expiryDate: expiryDate.toISOString(),
-                lastPaidPrice: currentPrice
-            };
-            
-            saveToLocalStorage(SUBSCRIPTION_KEY, subscriptionData);
-            
-            // Po úspešnej platbe resetujeme počítadlá správ pre obe verzie
-            saveToLocalStorage(MESSAGE_COUNT_KEY_FREE, 0);
-            saveToLocalStorage(MESSAGE_COUNT_KEY_PAID, 0);
-
-            // Nahradenie alert() vlastným modálnym oknom
-            showModal(
-                "Platba úspešná",
-                `Platba za ${currentPrice.toFixed(2)} € bola úspešne spracovaná! Vaše predplatné bolo aktivované na 30 dní.`,
-                checkSubscription // Po zatvorení modálneho okna sa skontroluje predplatné
-            );
-        }
-        
-        // --- NOVÁ FUNKCIA: Správa cool-downu ---
-        /**
-        * Spustí cool-down (časový limit) na posielanie správ.
-        */
-        function startCooldown() {
-            // Náhodný čas od 1 do 5 minút
-            const randomTimeInMinutes = Math.floor(Math.random() * 5) + 1;
-            const cooldownDuration = randomTimeInMinutes * 60 * 1000;
-            cooldownEndTime = new Date(Date.now() + cooldownDuration);
-            isCooldownActive = true;
-            messagesSinceCooldown = 0; // Resetuje počítadlo správ
-
-            userInput.disabled = true;
-            sendButton.disabled = true;
-            userInput.placeholder = "Prebieha časový limit...";
-            cooldownStatus.classList.remove('hidden');
-
-            // Aktualizuje časovač každú sekundu
-            if (cooldownInterval) clearInterval(cooldownInterval);
-            cooldownInterval = setInterval(updateCooldownTimer, 1000);
-
-            showModal("Časový limit", `Dosiahli ste limit správ pre túto reláciu. Skúste to znova o ${randomTimeInMinutes} minút.`, () => {
-                // Po zatvorení modálu sa nič nedeje, časovač beží na pozadí
-            });
-        }
-        
-        /**
-        * Aktualizuje zobrazenie zostávajúceho času do konca cool-downu.
-        */
-        function updateCooldownTimer() {
-            const now = new Date();
-            if (cooldownEndTime > now) {
-                const remainingTime = cooldownEndTime - now;
-                const minutes = Math.floor(remainingTime / 60000);
-                const seconds = Math.floor((remainingTime % 60000) / 1000);
-                cooldownStatus.innerText = `Časový limit: Zostáva ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-            } else {
-                // Časový limit vypršal
-                isCooldownActive = false;
+                const remainingTimeFormatted = formatTime(remaining);
+                usageStatusElement.classList.remove('text-red-400');
+                usageStatusElement.classList.add('text-yellow-300');
+                usageStatusElement.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Zostávajúci čas: <span class="font-bold">${remainingTimeFormatted}</span>`;
                 userInput.disabled = false;
                 sendButton.disabled = false;
-                userInput.placeholder = "Napíšte svoju správu...";
-                cooldownStatus.classList.add('hidden');
-                clearInterval(cooldownInterval);
-                cooldownInterval = null;
-                showModal("Časový limit vypršal", "Môžete pokračovať v chatovaní.");
             }
         }
 
-        // --- Pomocné funkcie pre UI a API volania ---
-        
-        async function makeApiCall(apiUrl, payload, errorContext) {
-            let retryCount = 0;
-            const maxRetries = 3;
+        // Inicializácia a pravidelná aktualizácia času
+        updateTimeDisplay();
+        setInterval(updateTimeDisplay, 1000);
+        // --- KONIEC LOGIKY LIMITU ---
 
-            while (retryCount < maxRetries) {
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (response.ok) {
-                        return response;
-                    } else if (response.status === 429) {
-                        const delay = Math.pow(2, retryCount) * 1000;
-                        console.warn(`API požiadavka zlyhala (${response.status}), opakujem o ${delay}ms...`);
-                        await new Promise(res => setTimeout(res, delay));
-                        retryCount++;
-                    } else {
-                        const errorData = await response.json();
-                        throw new Error(`Volanie API pre ${errorContext} zlyhalo so stavom: ${response.status}. Správa: ${JSON.stringify(errorData)}`);
-                    }
-                } catch (error) {
-                    if (retryCount >= maxRetries - 1) {
-                        throw new Error(`Volanie API pre ${errorContext} zlyhalo po opakovaných pokusoch. Pôvodná chyba: ${error.message}`);
-                    }
-                    console.error(`Chyba siete pri volaní API pre ${errorContext}:`, error);
-                    const delay = Math.pow(2, retryCount) * 1000;
-                    console.warn(`Chyba siete, opakujem o ${delay}ms...`);
-                    await new Promise(res => setTimeout(res, delay));
-                    retryCount++;
-                }
-            }
-            throw new Error(`Volanie API pre ${errorContext} zlyhalo po opakovaných pokusoch.`);
-        }
 
-        /**
-        * Konvertuje base64 reťazec na ArrayBuffer.
-        * @param {string} base64 Base64 zakódované dáta.
-        * @returns {ArrayBuffer} Dekódované dáta v ArrayBuffer.
-        */
+        // --- Helper funkcie pre audio (TTS) ---
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -654,12 +202,6 @@
             return bytes.buffer;
         }
 
-        /**
-        * Konvertuje PCM dáta na WAV Blob.
-        * @param {ArrayBuffer} pcmData RAW PCM audio dáta.
-        * @param {number} sampleRate Vzorkovacia frekvencia zvuku.
-        * @returns {Blob} Objekty Blob s hlavičkou WAV.
-        */
         function pcmToWav(pcmData, sampleRate) {
             const pcm16 = new Int16Array(pcmData);
             const buffer = new ArrayBuffer(44 + pcm16.byteLength);
@@ -672,33 +214,37 @@
                 }
             };
 
+            // RIFF header
             writeString('RIFF');
             view.setUint32(offset, 36 + pcm16.byteLength, true); offset += 4;
             writeString('WAVE');
+
+            // fmt chunk
             writeString('fmt ');
-            view.setUint32(offset, 16, true); offset += 4;
-            view.setUint16(offset, 1, true); offset += 2; // AudioFormat: 1 = PCM
-            view.setUint16(offset, 1, true); offset += 2; // NumChannels: 1 = Mono
-            view.setUint32(offset, sampleRate, true); offset += 4; // SampleRate
-            view.setUint32(offset, sampleRate * 2, true); offset += 4; // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
-            view.setUint16(offset, 2, true); offset += 2; // BlockAlign (NumChannels * BitsPerSample/8)
-            view.setUint16(offset, 16, true); offset += 2; // BitsPerSample
+            view.setUint32(offset, 16, true); offset += 4; // Chunk size
+            view.setUint16(offset, 1, true); offset += 2; // Audio format (PCM)
+            view.setUint16(offset, 1, true); offset += 2; // Number of channels (mono)
+            view.setUint32(offset, sampleRate, true); offset += 4; // Sample rate
+            view.setUint32(offset, sampleRate * 2, true); offset += 4; // Byte rate
+            view.setUint16(offset, 2, true); offset += 2; // Block align
+            view.setUint16(offset, 16, true); offset += 2; // Bits per sample
+
+            // data chunk
             writeString('data');
             view.setUint32(offset, pcm16.byteLength, true); offset += 4;
             for (let i = 0; i < pcm16.length; i++) {
                 view.setInt16(offset, pcm16[i], true);
                 offset += 2;
             }
+
             return new Blob([view], { type: 'audio/wav' });
         }
         
-        /**
-        * Volá API Gemini na generovanie hlasu z textu.
-        * @param {string} text Text, ktorý sa má prečítať.
-        * @returns {Promise<string|null>} URL objektu s audio dátami alebo null pri chybe.
-        */
-        async function speakWithGemini(text) {
-            const prompt = `Hovorte veselým a priateľským hlasom v slovenčine: ${text}`;
+        async function speakMessage(text, buttonElement) {
+            // Používame pevný, predvolený hlas (Puck)
+            const ttsVoice = "Puck"; 
+            const prompt = `Say in a cheerful and friendly voice (use voice: ${ttsVoice}): ${text}`;
+            
             const payload = {
                 contents: [{
                     parts: [{ text: prompt }]
@@ -707,17 +253,26 @@
                     responseModalities: ["AUDIO"],
                     speechConfig: {
                         voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: "Puck" }
+                            prebuiltVoiceConfig: { voiceName: ttsVoice }
                         }
                     }
                 },
                 model: "gemini-2.5-flash-preview-tts"
             };
-            const modelName = "gemini-2.5-flash-preview-tts";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            const audio = new Audio();
             
+            const originalIcon = buttonElement.innerHTML;
+            buttonElement.innerHTML = `<i class="fa-solid fa-volume-up text-red-400 animate-pulse"></i>`;
+            buttonElement.disabled = true;
+
             try {
-                const response = await makeApiCall(apiUrl, payload, "generovanie hlasu cez Gemini");
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
                 const result = await response.json();
                 const part = result?.candidates?.[0]?.content?.parts?.[0];
                 const audioData = part?.inlineData?.data;
@@ -728,193 +283,155 @@
                     const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
                     const pcmData = base64ToArrayBuffer(audioData);
                     const wavBlob = pcmToWav(pcmData, sampleRate);
-                    return URL.createObjectURL(wavBlob);
+                    audio.src = URL.createObjectURL(wavBlob);
+                    audio.play();
                 } else {
-                    throw new Error("Neplatná zvuková odpoveď od Gemini API.");
+                    console.error("Audio dáta chýbajú alebo majú nesprávny formát.");
                 }
             } catch (error) {
-                console.error("Chyba pri generovaní hlasu Gemini:", error);
-                showError(`Chyba API Gemini: ${error.message}`);
-                return null;
+                console.error("Chyba pri generovaní reči (TTS):", error);
+            } finally {
+                buttonElement.innerHTML = originalIcon;
+                buttonElement.disabled = false;
             }
         }
         
-        /**
-        * Prehrá zvuk z daného textu, ak je prepínač zapnutý.
-        * Ak už nejaký zvuk hrá, zastaví ho.
-        * @param {string} text Text, ktorý sa má prečítať.
-        */
-        async function playAudio(text) {
-            if (!ttsApiToggle.checked) {
+        // --- Hlavná funkcia pre odosielanie správ (text-only) ---
+        async function sendMessage() {
+            const userMessage = userInput.value.trim();
+
+            if (!userMessage) return;
+
+            // Kontrola časového limitu
+            const remaining = usageLimitMs - (Date.now() - usageStartTime);
+            if (remaining <= 0) {
+                // Ak limit vypršal, zabránime odoslaniu správy
+                console.error("Limit vypršal. Správa nebola odoslaná.");
                 return;
             }
 
-            if (audioInstance) {
-                audioInstance.pause();
-                audioInstance.currentTime = 0;
-            }
-
-            const audioUrl = await speakWithGemini(text);
-            
-            if (audioUrl) {
-                const audio = new Audio();
-                audio.src = audioUrl;
-                audioInstance = audio;
-                
-                try {
-                    await audio.play();
-                } catch (playError) {
-                    console.log("Automatické prehrávanie bolo zablokované.");
-                }
-            }
-        }
-
-        function appendUserMessage(message, shouldSave = true) {
+            // 1. Zobrazíme správu používateľa
             const userMessageDiv = document.createElement('div');
             userMessageDiv.className = 'flex justify-end';
             userMessageDiv.innerHTML = `
                 <div class="max-w-[80%] bg-purple-700/70 text-white p-3 rounded-2xl rounded-br-none shadow-md">
-                    <p>${message}</p>
+                    <p>${userMessage}</p>
                 </div>
             `;
             chatWindow.appendChild(userMessageDiv);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
 
-            if (shouldSave) {
-                chatHistory.push({ role: "user", parts: [{ text: message }] });
-            }
-        }
-
-        function appendAiMessage(message, shouldPlayAudio = true, shouldSave = true) {
-            const aiMessageDiv = document.createElement('div');
-            aiMessageDiv.className = 'flex items-start my-4';
-            
-            const messageBubble = document.createElement('div');
-            messageBubble.className = 'max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md whitespace-pre-wrap';
-            messageBubble.innerHTML = `<p>${message}</p>`;
-
-            aiMessageDiv.innerHTML = `
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
-                    <i class="fa-solid fa-robot text-white"></i>
-                </div>
-            `;
-            aiMessageDiv.appendChild(messageBubble);
-            
-            chatWindow.appendChild(aiMessageDiv);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-
-            if (shouldPlayAudio && ttsApiToggle.checked) {
-                playAudio(message);
-            }
-
-            if (shouldSave) {
-                chatHistory.push({ role: "model", parts: [{ text: message }] });
-            }
-        }
-
-        async function sendMessage() {
-            const message = userInput.value.trim();
-            if (message === '') return;
-
-            // Kontrola limitu správ pre skúšobnú verziu a cooldown
-            const subscriptionData = loadFromLocalStorage(SUBSCRIPTION_KEY);
-            const isSubscribed = subscriptionData && new Date(subscriptionData.expiryDate) > new Date();
-            let isAllowed = false;
-
-            if (isSubscribed) {
-                let paidMessageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY_PAID) || 0;
-                if (paidMessageCount < MAX_MESSAGES_PAID) {
-                    paidMessageCount++;
-                    saveToLocalStorage(MESSAGE_COUNT_KEY_PAID, paidMessageCount);
-                    isAllowed = true;
-                    messageLimitStatus.innerText = `Platená verzia: ${MAX_MESSAGES_PAID - paidMessageCount} správ zostáva.`;
-                }
-            } else {
-                let freeMessageCount = loadFromLocalStorage(MESSAGE_COUNT_KEY_FREE) || 0;
-                if (freeMessageCount < MAX_MESSAGES_FREE) {
-                    freeMessageCount++;
-                    saveToLocalStorage(MESSAGE_COUNT_KEY_FREE, freeMessageCount);
-                    isAllowed = true;
-                    messageLimitStatus.innerText = `Skúšobná verzia: ${MAX_MESSAGES_FREE - freeMessageCount} správ zostáva.`;
-                } else if (!isCooldownActive) {
-                    messagesSinceCooldown++;
-                    if (messagesSinceCooldown >= MESSAGES_BEFORE_COOLDOWN) {
-                        startCooldown();
-                    } else {
-                        isAllowed = true;
-                    }
-                }
-            }
-
-            if (!isAllowed) {
-                if (!isCooldownActive) {
-                    showModal("Limit správ prekročený", "Pre skúšobnú verziu ste vyčerpali limit správ.");
-                }
-                return;
-            }
-
-            appendUserMessage(message);
+            // 2. Vyčistíme vstup
             userInput.value = '';
-            
-            const loadingIndicator = document.createElement('div');
-            loadingIndicator.className = 'flex items-center my-4';
-            loadingIndicator.innerHTML = `
+
+            // 3. Zobrazíme indikátor "písania"
+            const typingIndicator = document.createElement('div');
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.className = 'flex items-start my-4';
+            typingIndicator.innerHTML = `
                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
                     <i class="fa-solid fa-robot text-white"></i>
                 </div>
-                <div class="flex items-center space-x-2 bg-gray-800/70 p-3 rounded-2xl rounded-bl-none shadow-md">
+                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
                     <div class="dot-flashing"></div>
                 </div>
             `;
-            chatWindow.appendChild(loadingIndicator);
+            chatWindow.appendChild(typingIndicator);
             chatWindow.scrollTop = chatWindow.scrollHeight;
 
-            const userQuery = message;
-            
-            // Pripravíme kontext pre AI o aktuálnom dátume a meninách
-            const calendarInfo = getCalendarInfo();
-            const fullQuery = `${calendarInfo}\n\n${userQuery}`;
+            // 4. Konštrukcia API payloadu
+            const modelToUse = "gemini-2.5-flash-preview-09-2025";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`;
 
-            const payload = {
-                contents: [
-                    ...chatHistory,
-                    { role: "user", parts: [{ text: fullQuery }] }
-                ],
-                tools: [{ "google_search": {} }],
-                systemInstruction: {
-                    parts: [{ text: "Si nápomocný a priateľský asistent hovoriaci po slovensky. Používaj informácie o dátume a meninách v tvojich odpovediach, ak je to relevantné." }]
-                }
-            };
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
+            // Content pre text-only (zachovanie histórie chatu)
+            const contents = [...chatHistory, { role: "user", parts: [{ text: userMessage }] }];
+            const payload = { contents: contents };
 
             try {
-                const response = await makeApiCall(apiUrl, payload, "generovanie obsahu cez Gemini");
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
                 const result = await response.json();
-                let aiResponseText = 'Prepáč, momentálne neviem spracovať tvoju požiadavku.';
-                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
-                    aiResponseText = result.candidates[0].content.parts[0].text;
+                
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const aiResponse = result.candidates[0].content.parts[0].text;
+                    
+                    // Odstránime indikátor písania
+                    typingIndicator.remove();
+                    
+                    // Zobrazíme odpoveď AI
+                    const aiMessageDiv = document.createElement('div');
+                    aiMessageDiv.className = 'flex items-start my-4';
+                    aiMessageDiv.innerHTML = `
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                            <i class="fa-solid fa-robot text-white"></i>
+                        </div>
+                        <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md whitespace-pre-wrap">
+                            <p>${aiResponse}</p>
+                        </div>
+                        <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    `;
+                    chatWindow.appendChild(aiMessageDiv);
+
+                    // Pridáme do histórie
+                    chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+                    chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+                    
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                } else {
+                    typingIndicator.remove();
+                    // Správa o chybe z API
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'flex items-start my-4';
+                    errorDiv.innerHTML = `
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                            <i class="fa-solid fa-robot text-white"></i>
+                        </div>
+                        <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
+                            <p>Nastala chyba pri generovaní odpovede. (žiadny text v odpovedi)</p>
+                        </div>
+                    `;
+                    chatWindow.appendChild(errorDiv);
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
                 }
-                loadingIndicator.remove();
-                appendAiMessage(aiResponseText);
             } catch (error) {
-                console.error("Chyba pri získavaní odpovede od AI:", error);
-                loadingIndicator.remove();
-                appendAiMessage("Prepáč, vyskytla sa chyba pri komunikácii s AI. Skús to prosím neskôr.");
+                console.error("Chyba pri volaní API:", error);
+                
+                // Odstránime indikátor písania
+                const typingIndicatorElement = document.getElementById('typing-indicator');
+                if (typingIndicatorElement) {
+                    typingIndicatorElement.remove();
+                }
+
+                // Zobrazíme chybovú správu
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'flex items-start my-4';
+                errorDiv.innerHTML = `
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
+                        <i class="fa-solid fa-robot text-white"></i>
+                    </div>
+                    <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
+                        <p>Nastala chyba pri volaní API. Skúste to znova.</p>
+                    </div>
+                `;
+                chatWindow.appendChild(errorDiv);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
             }
         }
-        
-        // Listenery udalostí
-        payButton.addEventListener('click', simulatePayment);
+
         sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keydown', (e) => {
+        userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
-        
-        // Inicializácia pri načítaní stránky
-        document.addEventListener('DOMContentLoaded', checkSubscription);
-
     </script>
 </body>
 </html>
