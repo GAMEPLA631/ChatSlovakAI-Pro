@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak Pro</title>
+    <title>ChatSlovak Pro (Nativny Hlas)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
@@ -95,7 +95,7 @@
         
         <header class="text-center mb-6">
             <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak Pro</h1>
-            <p class="text-sm text-gray-300 mt-2">Váš pokročilý AI spoločník</p>
+            <p class="text-sm text-gray-300 mt-2">Váš pokročilý AI spoločník (s natívnym hlasom prehliadača)</p>
             <!-- 60-minútový limit -->
             <div id="timer-display" class="mt-2 text-lg font-medium text-yellow-300">
                 Zostávajúci čas: 60:00
@@ -331,121 +331,73 @@
             chatWindow.scrollTop = chatWindow.scrollHeight;
         }
 
-        // --- Helper funkcie pre audio (TTS) ---
-        function base64ToArrayBuffer(base64) {
-            // Konvertuje Base64 na ArrayBuffer pre spracovanie PCM dát
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+        // --- NATIVE TTS LOGIC (Web Speech API) ---
+
+        let slovakVoice = null;
+        let isSpeaking = false;
+
+        // Načíta dostupné hlasy a pokúsi sa nájsť slovenský
+        function loadVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            slovakVoice = voices.find(voice => voice.lang === 'sk-SK' || voice.lang.startsWith('sk'));
+            
+            // Ak sa hlasy nenačítajú hneď (častý problém), pridáme listener
+            if (voices.length === 0 && 'onvoiceschanged' in window.speechSynthesis) {
+                 window.speechSynthesis.onvoiceschanged = () => {
+                    loadVoices();
+                    window.speechSynthesis.onvoiceschanged = null; // Odstránime listener
+                 };
             }
-            return bytes.buffer;
         }
 
-        function pcmToWav(pcmData, sampleRate) {
-            // Konvertuje surové PCM dáta na WAV Blob pre prehrávanie v prehliadači
-            const pcm16 = new Int16Array(pcmData);
-            const buffer = new ArrayBuffer(44 + pcm16.byteLength);
-            const view = new DataView(buffer);
-            let offset = 0;
-
-            const writeString = (str) => {
-                for (let i = 0; i < str.length; i++) {
-                    view.setUint8(offset++, str.charCodeAt(i));
-                }
-            };
-
-            // RIFF header
-            writeString('RIFF');
-            view.setUint32(offset, 36 + pcm16.byteLength, true); offset += 4;
-            writeString('WAVE');
-
-            // fmt chunk
-            writeString('fmt ');
-            view.setUint32(offset, 16, true); offset += 4; // Chunk size
-            view.setUint16(offset, 1, true); offset += 2; // Audio format (PCM)
-            view.setUint16(offset, 1, true); offset += 2; // Number of channels (mono)
-            view.setUint32(offset, sampleRate, true); offset += 4; // Sample rate
-            view.setUint32(offset, sampleRate * 2, true); offset += 4; // Byte rate
-            view.setUint16(offset, 2, true); offset += 2; // Block align
-            view.setUint16(offset, 16, true); offset += 2; // Bits per sample
-
-            // data chunk
-            writeString('data');
-            view.setUint32(offset, pcm16.byteLength, true); offset += 4;
-            for (let i = 0; i < pcm16.length; i++) {
-                view.setInt16(offset, pcm16[i], true);
-                offset += 2;
-            }
-
-            return new Blob([view], { type: 'audio/wav' });
-        }
+        // Zavoláme hneď po štarte (ak nie je načítané, listener to ošetrí)
+        loadVoices(); 
         
-        async function speakMessage(text, buttonElement) {
-            // --- POUŽÍVAME NOVÝ HLAS: CHARON (PROFESSIONAL/INFORMATIVE) ---
-            const ttsVoice = "Charon"; 
-            // Upravená inštrukcia tónu
-            const prompt = `Say in a clear, measured, and professional voice (use voice: ${ttsVoice}): ${text}`;
-            
-            const payload = {
-                contents: [{
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: ttsVoice }
-                        }
-                    }
-                },
-                model: "gemini-2.5-flash-preview-tts"
-            };
+        function speakMessage(text, buttonElement) {
+            if (isSpeaking) {
+                // Ak už hovorí, zastavíme to
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+                buttonElement.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
+                return;
+            }
 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-            const audio = new Audio();
+            if (!('speechSynthesis' in window)) {
+                alert('Váš prehliadač nepodporuje funkciu prevodu textu na reč.');
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
             
+            // Nastaví nájdený slovenský hlas, inak použije predvolený
+            if (slovakVoice) {
+                utterance.voice = slovakVoice;
+            }
+            utterance.lang = 'sk-SK';
+            utterance.rate = 1.0; 
+
             const originalIcon = buttonElement.innerHTML;
             buttonElement.innerHTML = `<i class="fa-solid fa-volume-up text-red-400 animate-pulse"></i>`;
             buttonElement.disabled = true;
+            isSpeaking = true;
 
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
+            utterance.onend = () => {
+                buttonElement.innerHTML = originalIcon;
+                buttonElement.disabled = false;
+                isSpeaking = false;
+            };
 
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    const wavBlob = pcmToWav(pcmData, sampleRate);
-                    audio.src = URL.createObjectURL(wavBlob);
-                    audio.play();
-                } else {
-                    console.error("Audio dáta chýbajú alebo majú nesprávny formát.");
-                }
-            } catch (error) {
-                console.error("Chyba pri generovaní reči (TTS):", error);
-            } finally {
-                audio.onended = () => {
-                    buttonElement.innerHTML = originalIcon;
-                    buttonElement.disabled = false;
-                };
-                // Pre prípad chyby
-                if(audio.paused || audio.ended) {
-                    buttonElement.innerHTML = originalIcon;
-                    buttonElement.disabled = false;
-                }
-            }
+            utterance.onerror = (event) => {
+                console.error('SpeechSynthesis Utterance Error:', event);
+                buttonElement.innerHTML = originalIcon;
+                buttonElement.disabled = false;
+                isSpeaking = false;
+            };
+
+            window.speechSynthesis.speak(utterance);
         }
-        
+
+
         // --- Hlavná funkcia pre odosielanie správ ---
         async function sendMessage() {
             // Kontrola 60-minútového limitu
@@ -541,7 +493,7 @@
             const modelToUse = "gemini-2.5-flash-preview-09-2025";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`;
             
-            // Inštrukcia pre čistý text bez Markdown znakov
+            // Inštrukcia pre čistý text bez Markdown znakov (ponechaná)
             const systemPrompt = "Si ChatSlovak Pro, pokročilý, no priateľský AI spoločník. Odpovedaj výhradne a striktne po slovensky na stredne pokročilej úrovni. NEPOUŽÍVAJ ŽIADNE MARKDOWN ZNAKY, ako sú hviezdičky (*), mriežky (#), podčiarkovníky (_) alebo iné symboly formátovania. Generuj len čistý, súvislý text.";
 
             // Konštrukcia obsahu (Contents)
@@ -689,8 +641,6 @@
     </script>
 </body>
 </html>
-
-
 
 
 
