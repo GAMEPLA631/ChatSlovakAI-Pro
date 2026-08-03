@@ -354,7 +354,7 @@
                             else if (line.startsWith('### ')) html += `<h3>${line.slice(4)}</h3>`;
                             else if (line.startsWith('## ')) html += `<h2>${line.slice(3)}</h2>`;
                             else if (line.startsWith('# ')) html += `<h1>${line.slice(2)}</h1>`;
-                            else if (line.startsWith('> ')) html += `<blockquote>${line.slice(2)}</blockquote>`;
+                            else if (line.startsWith('> ')) html += `blockquote>${line.slice(2)}</blockquote>`;
                             else if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) html += `<ul><li>${line.trim().slice(2)}</li></ul>`;
                             else html += `<p>${line}</p>`;
                         });
@@ -786,6 +786,35 @@
             async updateProvider(idx, key, val) {
                 state.providers[idx][key] = val;
                 await dbPut('providers', state.providers[idx]);
+                
+                // Automatické pripojenie a načítanie modelov po zadaní Base URL / API Key
+                if (key === 'baseUrl' || key === 'apiKey') {
+                    const p = state.providers[idx];
+                    try {
+                        let modelsUrl = p.baseUrl.replace(/\/+$/, '');
+                        if (p.isLocal && !modelsUrl.endsWith('/v1')) {
+                            modelsUrl += '/v1/models';
+                        } else if (!modelsUrl.endsWith('/models')) {
+                            modelsUrl += '/models';
+                        }
+                        
+                        const headers = {};
+                        if (p.apiKey) headers['Authorization'] = `Bearer ${p.apiKey}`;
+                        
+                        const r = await fetch(modelsUrl, { headers, signal: AbortSignal.timeout(3000) });
+                        if (r.ok) {
+                            const d = await r.json();
+                            if (d.data) {
+                                p.models = d.data.map(m => m.id);
+                                await dbPut('providers', p);
+                                this.showToast(`Pripojené k ${p.name}. Modely načítané!`, 'success');
+                            }
+                        }
+                    } catch (e) {
+                        this.showToast(`Nepodarilo sa pripojiť k ${p.name}`, 'error');
+                    }
+                }
+
                 this.renderProviderSelects();
                 this.checkLocalServices();
             },
@@ -818,6 +847,5 @@
     </script>
 </body>
 </html>
-
 
 
