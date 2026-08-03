@@ -354,7 +354,7 @@
                             else if (line.startsWith('### ')) html += `<h3>${line.slice(4)}</h3>`;
                             else if (line.startsWith('## ')) html += `<h2>${line.slice(3)}</h2>`;
                             else if (line.startsWith('# ')) html += `<h1>${line.slice(2)}</h1>`;
-                            else if (line.startsWith('> ')) html += `blockquote>${line.slice(2)}</blockquote>`;
+                            else if (line.startsWith('> ')) html += `<blockquote>${line.slice(2)}</blockquote>`;
                             else if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) html += `<ul><li>${line.trim().slice(2)}</li></ul>`;
                             else html += `<p>${line}</p>`;
                         });
@@ -732,7 +732,13 @@
                                     </div>
                                     <div class="grid grid-cols-2 gap-3 text-xs">
                                         <div><label class="block text-slate-400 mb-1">Base URL</label><input type="text" value="${p.baseUrl}" onchange="app.updateProvider(${i}, 'baseUrl', this.value)" class="w-full rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-200 outline-none focus:border-emerald-500" /></div>
-                                        ${!p.isLocal ? `<div><label class="block text-slate-400 mb-1">API Key</label><input type="password" value="${p.apiKey}" onchange="app.updateProvider(${i}, 'apiKey', this.value)" class="w-full rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-200 outline-none focus:border-emerald-500" /></div>` : ''}
+                                        ${!p.isLocal ? `<div><label class="block text-slate-400 mb-1">API Key</label><input type="password" value="${p.apiKey}" onchange="app.updateProvider(${i}, 'apiKey', this.value)" class="w-full rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-200 outline-none focus:border-emerald-500" /></div>` : '<div></div>'}
+                                    </div>
+                                    <div class="flex justify-end pt-1">
+                                        <button onclick="app.testProviderConnection(${i})" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition hover:bg-emerald-500 hover:text-slate-950 flex items-center gap-1.5 border border-slate-700 hover:border-emerald-500">
+                                            <i data-lucide="plug" class="h-3 w-3"></i>
+                                            <span>Pripojiť a načítať modely</span>
+                                        </button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -819,6 +825,39 @@
                 this.checkLocalServices();
             },
 
+            async testProviderConnection(idx) {
+                const p = state.providers[idx];
+                try {
+                    let modelsUrl = p.baseUrl.replace(/\/+$/, '');
+                    if (p.isLocal && !modelsUrl.endsWith('/v1')) {
+                        modelsUrl += '/v1/models';
+                    } else if (!modelsUrl.endsWith('/models')) {
+                        modelsUrl += '/models';
+                    }
+                    
+                    const headers = {};
+                    if (p.apiKey) headers['Authorization'] = `Bearer ${p.apiKey}`;
+                    
+                    const r = await fetch(modelsUrl, { headers, signal: AbortSignal.timeout(5000) });
+                    if (r.ok) {
+                        const d = await r.json();
+                        if (d.data && d.data.length > 0) {
+                            p.models = d.data.map(m => m.id);
+                            await dbPut('providers', p);
+                            this.showToast(`Pripojené k ${p.name}. Modely úspešne načítané!`, 'success');
+                            this.renderProviderSelects();
+                            this.checkLocalServices();
+                        } else {
+                            this.showToast(`Pripojené k ${p.name}, ale nenašli sa žiadne modely.`, 'info');
+                        }
+                    } else {
+                        throw new Error(`HTTP chyba ${r.status}`);
+                    }
+                } catch (e) {
+                    this.showToast(`Chyba pripojenia k ${p.name}: ${e.message}`, 'error');
+                }
+            },
+
             async addMemory() {
                 const val = document.getElementById('memInput').value.trim();
                 if(!val) return;
@@ -847,5 +886,4 @@
     </script>
 </body>
 </html>
-
 
