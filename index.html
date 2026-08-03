@@ -3,645 +3,821 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak Pro (Nativny Hlas)</title>
+    <title>GAMEPLA631 AI</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            /* Používame externý obrázok na pozadie */
-            background-image: url('https://images.deepai.org/art-image/31cd000b7f3148918f85f76a1b8604f7/ai-495f1e.jpg');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            color: #E2E8F0;
-            margin: 0;
-            padding: 0;
-            user-select: none;
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        .animate-spin-slow { animation: spin 3s linear infinite; }
+        
+        /* Markdown Styles */
+        .markdown-body h1 { font-size: 1.5em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #f1f5f9; }
+        .markdown-body h2 { font-size: 1.25em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #f1f5f9; }
+        .markdown-body h3 { font-size: 1.125em; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; color: #34d399; }
+        .markdown-body p { margin-bottom: 0.75em; }
+        .markdown-body ul { list-style-type: disc; margin-left: 1.5em; margin-bottom: 1em; }
+        .markdown-body ol { list-style-type: decimal; margin-left: 1.5em; margin-bottom: 1em; }
+        .markdown-body blockquote { border-left: 4px solid #34d399; padding-left: 1em; color: #cbd5e1; font-style: italic; background: rgba(30, 41, 59, 0.5); border-radius: 0 0.25rem 0.25rem 0; padding-top: 0.25rem; padding-bottom: 0.25rem;}
+        
+        .think-block {
+            margin-bottom: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(51, 65, 85, 0.6);
+            background: rgba(15, 23, 42, 0.5);
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
         }
-        .chat-container {
-            position: relative;
-            z-index: 10;
+        .think-summary {
+            display: flex; cursor: pointer; items-center; gap: 0.5rem; background: rgba(30, 41, 59, 0.5); 
+            padding: 0.625rem 1rem; font-size: 0.75rem; font-weight: 600; color: #94a3b8; user-select: none;
         }
-        .chat-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            border-radius: 1.5rem;
-            z-index: -1;
+        .think-summary:hover { background: rgba(30, 41, 59, 1); }
+        .think-summary::-webkit-details-marker { display: none; }
+        .think-content {
+            padding: 1rem; font-size: 0.8125rem; color: #94a3b8; border-top: 1px solid #1e293b;
+            white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            opacity: 0.8; background: rgba(2, 6, 23, 0.3);
         }
-        .message-container {
-            max-height: 70vh;
-            overflow-y: auto;
-            scroll-behavior: smooth;
-        }
-        /* Scrollbar styling */
-        .message-container::-webkit-scrollbar {
-            width: 8px;
-        }
-        .message-container::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-        .message-container::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-        }
-        .dot-flashing {
-            position: relative;
-            width: 10px;
-            height: 10px;
-            border-radius: 5px;
-            background-color: #9880ff;
-            color: #9880ff;
-            animation: dot-flashing 1s infinite linear alternate;
-            animation-delay: 0.5s;
-        }
-        .dot-flashing::before, .dot-flashing::after {
-            content: '';
-            display: inline-block;
-            position: absolute;
-            top: 0;
-            width: 10px;
-            height: 10px;
-            border-radius: 5px;
-            background-color: #9880ff;
-        }
-        .dot-flashing::before {
-            left: -15px;
-            animation: dot-flashing 1s infinite alternate;
-            animation-delay: 0s;
-        }
-        .dot-flashing::after {
-            left: 15px;
-            animation: dot-flashing 1s infinite alternate;
-            animation-delay: 1s;
-        }
-        @keyframes dot-flashing {
-            0% { background-color: #9880ff; }
-            50%, 100% { background-color: #eee; }
-        }
+        details[open] .think-icon { transform: rotate(180deg); }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4">
+<body class="bg-slate-950 text-slate-100 flex h-screen w-screen overflow-hidden text-sm">
 
-    <main class="w-full max-w-3xl flex flex-col h-[90vh] chat-container rounded-3xl p-6 shadow-2xl">
-        
-        <header class="text-center mb-6">
-            <h1 class="text-4xl font-bold text-white tracking-wide">ChatSlovak Pro</h1>
-            <p class="text-sm text-gray-300 mt-2">Váš pokročilý AI spoločník (s natívnym hlasom prehliadača)</p>
-            <!-- 60-minútový limit -->
-            <div id="timer-display" class="mt-2 text-lg font-medium text-yellow-300">
-                Zostávajúci čas: 60:00
+    <aside class="flex w-72 flex-col border-r border-slate-800 bg-slate-900/95 transition-all">
+        <div class="flex items-center justify-between border-b border-slate-800 p-4">
+            <div class="flex items-center gap-2.5">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 font-bold text-slate-950 shadow-md shadow-emerald-500/20">
+                    <i data-lucide="cpu" class="h-5 w-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold tracking-tight text-white">GAMEPLA631 AI</h1>
+                    <p class="text-[10px] text-emerald-400 font-medium">Univerzálne AI Rozhranie</p>
+                </div>
             </div>
-            <!-- Denný limit 35 správ -->
-            <div id="daily-limit-display" class="mt-1 text-sm text-green-400">
-                Načítavam denný limit...
-            </div>
-        </header>
+        </div>
 
-        <div id="chat-window" class="message-container flex-grow mb-4 p-4 space-y-4">
-            <!-- Počiatočná AI správa -->
-            <div class="flex items-start">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
-                    <i class="fa-solid fa-robot text-white"></i>
+        <div class="p-3 space-y-2">
+            <button onclick="app.createNewChat()" class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-2.5 px-4 font-semibold text-slate-950 shadow-md shadow-emerald-500/15 transition hover:bg-emerald-400 active:scale-[0.98]">
+                <i data-lucide="plus" class="h-4 w-4"></i>
+                <span>Nová konverzácia</span>
+            </button>
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-3 h-3.5 w-3.5 text-slate-500"></i>
+                <input type="text" id="searchInput" oninput="app.renderChatList()" placeholder="Hľadať v chatoch..." class="w-full rounded-lg border border-slate-800 bg-slate-950/60 py-1.5 pl-8 pr-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-emerald-500" />
+            </div>
+        </div>
+
+        <div id="chatList" class="flex-1 overflow-y-auto px-2 space-y-1 py-1">
+            <!-- Chat list will be rendered here -->
+        </div>
+
+        <div class="border-t border-slate-800 p-3 space-y-2 bg-slate-950/40">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Lokálne Služby</span>
+                <i data-lucide="refresh-cw" class="h-3 w-3 text-slate-500 animate-spin-slow"></i>
+            </div>
+            <div class="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 p-2 text-xs">
+                <span class="text-slate-300">LM Studio</span>
+                <div class="flex items-center gap-1.5">
+                    <span id="lmStatusIndicator" class="h-2 w-2 rounded-full bg-red-500"></span>
+                    <span id="lmStatusText" class="text-[10px] text-slate-400 font-mono uppercase">OFFLINE</span>
                 </div>
-                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
-                    <p>Ahoj! Som ChatSlovak Pro a budem ti odpovedať vždy len po slovensky na stredne pokročilej úrovni. Ak chceš, pošli mi aj obrázok na analýzu.</p>
+            </div>
+            <div class="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 p-2 text-xs">
+                <span class="text-slate-300">Ollama</span>
+                <div class="flex items-center gap-1.5">
+                    <span id="ollamaStatusIndicator" class="h-2 w-2 rounded-full bg-red-500"></span>
+                    <span id="ollamaStatusText" class="text-[10px] text-slate-400 font-mono uppercase">OFFLINE</span>
                 </div>
-                <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none" title="Prečítať správu">
-                    <i class="fa-solid fa-volume-high"></i>
+            </div>
+            <div class="grid grid-cols-4 gap-1 pt-2">
+                <button onclick="app.openModal('providers')" class="flex flex-col items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-2 text-[10px] text-slate-400 transition hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="layers" class="h-3.5 w-3.5 mb-1 text-emerald-400"></i><span>Služby</span>
+                </button>
+                <button onclick="app.openModal('memory')" class="flex flex-col items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-2 text-[10px] text-slate-400 transition hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="brain" class="h-3.5 w-3.5 mb-1 text-teal-400"></i><span>Pamäť</span>
+                </button>
+                <button onclick="app.openModal('rag')" class="flex flex-col items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-2 text-[10px] text-slate-400 transition hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="hard-drive" class="h-3.5 w-3.5 mb-1 text-sky-400"></i><span>RAG</span>
+                </button>
+                <button onclick="app.openModal('github')" class="flex flex-col items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-2 text-[10px] text-slate-400 transition hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="file-code" class="h-3.5 w-3.5 mb-1 text-purple-400"></i><span>GitHub</span>
                 </button>
             </div>
         </div>
+    </aside>
 
-        <div class="flex items-center space-x-3 mt-auto">
-            <!-- Skrytý input pre výber obrázku -->
-            <input type="file" id="image-input" accept="image/*" class="hidden">
-            
-            <!-- Tlačidlo pre nahranie obrázku -->
-            <button id="image-button" class="p-4 bg-gray-700 hover:bg-gray-600 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 focus:ring-offset-gray-900" title="Nahrať obrázok">
-                <i class="fa-solid fa-image"></i>
+    <main class="flex flex-1 flex-col overflow-hidden relative">
+        <header class="flex h-14 items-center justify-between border-b border-slate-800 bg-slate-900/60 px-6 backdrop-blur">
+            <div class="flex items-center gap-3">
+                <select id="providerSelect" onchange="app.changeProvider()" class="rounded-lg border border-slate-700 bg-slate-800 py-1.5 px-3 text-xs font-semibold text-slate-200 outline-none focus:border-emerald-500"></select>
+                <select id="modelSelect" onchange="app.changeModel()" class="rounded-lg border border-slate-700 bg-slate-800 py-1.5 px-3 text-xs font-semibold text-emerald-400 outline-none focus:border-emerald-500 max-w-[220px] truncate"></select>
+            </div>
+            <button onclick="app.openModal('settings')" class="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-slate-700 hover:text-white">
+                <i data-lucide="sliders" class="h-3.5 w-3.5 text-emerald-400"></i>
+                <span>Parametre AI</span>
             </button>
-            
-            <input type="text" id="user-input" placeholder="Napíšte svoju správu..." class="flex-grow p-4 bg-gray-900/60 text-white placeholder-gray-400 rounded-full border border-gray-700/50 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-200">
-            
-            <button id="send-button" class="p-4 bg-purple-700 hover:bg-purple-800 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900">
-                <i class="fa-solid fa-paper-plane"></i>
-            </button>
+        </header>
+
+        <div id="messagesContainer" class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Messages will be rendered here -->
         </div>
-        
-        <!-- Náhľad nahraného obrázku -->
-        <div id="image-preview-container" class="mt-3 hidden items-center p-3 bg-gray-900/50 rounded-xl border border-gray-700">
-            <img id="image-preview" class="h-16 w-16 object-cover rounded-lg mr-4 border border-gray-600">
-            <span id="image-filename" class="text-sm text-gray-300 truncate flex-grow"></span>
-            <button id="remove-image-button" class="ml-4 text-red-400 hover:text-red-500 transition-colors" title="Odstrániť obrázok">
-                <i class="fa-solid fa-times-circle"></i>
-            </button>
+
+        <div id="attachmentsBar" class="hidden items-center gap-2 px-6 py-2 bg-slate-900 border-t border-slate-800">
+            <span class="text-xs text-slate-400 font-medium">Prílohy:</span>
+            <div id="attachmentsList" class="flex gap-2"></div>
+        </div>
+
+        <div class="border-t border-slate-800 bg-slate-900/80 p-4 backdrop-blur">
+            <div class="max-w-4xl mx-auto flex items-end gap-3 rounded-2xl border border-slate-700/80 bg-slate-950 p-2.5 focus-within:border-emerald-500 shadow-xl">
+                <input type="file" id="fileInput" multiple onchange="app.handleFileUpload(event)" class="hidden" />
+                <button onclick="document.getElementById('fileInput').click()" class="rounded-xl p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200" title="Nahrať súbor">
+                    <i data-lucide="upload" class="h-4.5 w-4.5"></i>
+                </button>
+                <textarea id="messageInput" rows="1" onkeydown="app.handleKeydown(event)" placeholder="Položte otázku pre AI... (Enter pre odoslanie, Shift+Enter pre nový riadok)" class="max-h-36 flex-1 resize-none bg-transparent py-1.5 text-sm text-slate-100 placeholder-slate-500 outline-none"></textarea>
+                
+                <button id="stopBtn" onclick="app.stopGeneration()" class="hidden h-9 w-9 items-center justify-center rounded-xl bg-red-500 text-white shadow-md transition hover:bg-red-400" title="Zastaviť generovanie">
+                    <i data-lucide="square" class="h-4 w-4"></i>
+                </button>
+                <button id="sendBtn" onclick="app.sendMessage()" class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 shadow-md transition hover:bg-emerald-400 disabled:opacity-40">
+                    <i data-lucide="send" class="h-4 w-4"></i>
+                </button>
+            </div>
         </div>
     </main>
 
+    <div id="modalOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+        <div id="modalContent" class="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <!-- Dynamic Modal Content -->
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 hidden items-center gap-2 rounded-xl border px-4 py-3 text-xs font-semibold shadow-2xl transition">
+        <i id="toastIcon" data-lucide="info" class="h-4 w-4"></i>
+        <span id="toastText"></span>
+    </div>
+
     <script>
-        // --- GLOBAL SETUP (GLOBÁLNE NASTAVENIA) ---
-        const chatWindow = document.getElementById('chat-window');
-        const userInput = document.getElementById('user-input');
-        const sendButton = document.getElementById('send-button');
-        const imageInput = document.getElementById('image-input');
-        const imageButton = document.getElementById('image-button');
-        const imagePreviewContainer = document.getElementById('image-preview-container');
-        const imagePreview = document.getElementById('image-preview');
-        const imageFilename = document.getElementById('image-filename');
-        const removeImageButton = document.getElementById('remove-image-button');
-        const timerDisplay = document.getElementById('timer-display');
-        const dailyLimitDisplay = document.getElementById('daily-limit-display');
+        const DB_NAME = 'GAMEPLA631_AI_DB';
+        const DB_VERSION = 1;
+        const MASTER_KEY_ALIAS = 'GAMEPLA631_MASTER_CRYPTO_KEY';
 
-        let chatHistory = [];
-        const apiKey = "AIzaSyD3mxzbdINvR0WMBXqBhQpp5kkihcXtRTY"; 
+        const DEFAULT_PROVIDERS = [
+            { id: 'lm-studio', name: 'LM Studio (Lokálny)', type: 'openai-compatible', baseUrl: 'http://localhost:1234', apiKey: '', enabled: true, isLocal: true, models: ['default-model'] },
+            { id: 'ollama', name: 'Ollama (Lokálny)', type: 'ollama', baseUrl: 'http://localhost:11434', apiKey: '', enabled: true, isLocal: true, models: ['llama3', 'mistral', 'deepseek-r1'] },
+            { id: 'openai', name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1', apiKey: '', enabled: false, models: ['gpt-4o', 'gpt-4o-mini', 'o1-mini'] },
+            { id: 'gemini', name: 'Google Gemini', type: 'openai-compatible', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/', apiKey: '', enabled: false, models: ['gemini-2.0-flash'] },
+            { id: 'groq', name: 'Groq Cloud', type: 'openai-compatible', baseUrl: 'https://api.groq.com/openai/v1', apiKey: '', enabled: false, models: ['llama-3.3-70b-versatile'] },
+            { id: 'deepseek', name: 'DeepSeek API', type: 'openai-compatible', baseUrl: 'https://api.deepseek.com/v1', apiKey: '', enabled: false, models: ['deepseek-chat', 'deepseek-reasoner'] }
+        ];
 
-        // --- LIMIT CONSTANTS & STATE (LOKÁLNE ÚLOŽISKO) ---
-        const DAILY_LIMIT = 35;
-        const LOCKOUT_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hodiny v milisekundách
-        const DAILY_COUNT_KEY = 'chatSlovakProDailyCount';
-        const LOCKED_UNTIL_KEY = 'chatSlovakProLockedUntil';
+        const state = {
+            chats: [], activeChatId: null,
+            providers: [], selectedProviderId: 'lm-studio', selectedModel: '',
+            memories: [], ragDocs: [], attachments: [],
+            isGenerating: false, abortController: null,
+            parameters: { temperature: 0.7, topP: 0.9, maxTokens: 4096, systemPrompt: 'Si inteligentný, nápomocný AI asistent GAMEPLA631 AI. Odpovedaj presne a v slovenskom jazyku.' }
+        };
 
-        let dailyCount = 0;
-        let lockedUntil = 0; // Timestamp (ms)
-
-        // --- 60 MINÚTOVÝ LIMIT (TIMER) LOGIKA ---
-        let timeRemaining = 60 * 60; // 60 minút v sekundách
-        let timerInterval;
-
-        function updateTimedDisplay() {
-            // Aktualizuje zobrazenie zostávajúceho času
-            const minutes = Math.floor(timeRemaining / 60);
-            const seconds = timeRemaining % 60;
-            timerDisplay.textContent = `Zostávajúci čas: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        }
-
-        function endTimedSession() {
-            // Ukončí 60-minútovú reláciu
-            clearInterval(timerInterval);
-            userInput.disabled = true;
-            sendButton.disabled = true;
-            imageButton.disabled = true;
-            
-            timerDisplay.textContent = '60-minútový limit vypršal!';
-            timerDisplay.classList.remove('text-yellow-300', 'animate-pulse');
-            timerDisplay.classList.add('text-red-500');
-
-            const notificationDiv = document.createElement('div');
-            notificationDiv.className = 'text-center p-3 my-4 bg-red-800/50 rounded-lg shadow-inner';
-            notificationDiv.innerHTML = '<p class="text-white font-semibold">⏰ Vaša 60-minútová relácia vypršala. Chat bol deaktivovaný.</p>';
-            chatWindow.appendChild(notificationDiv);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
-
-        function startTimer() {
-            // Spustí odpočítavanie
-            updateTimedDisplay(); 
-
-            timerInterval = setInterval(() => {
-                timeRemaining--;
-                updateTimedDisplay();
-
-                if (timeRemaining <= 0) {
-                    endTimedSession();
-                }
-                
-                if (timeRemaining <= 120 && timeRemaining > 0) {
-                     timerDisplay.classList.add('text-red-400', 'animate-pulse');
-                } else {
-                     timerDisplay.classList.remove('text-red-400', 'animate-pulse');
-                }
-            }, 1000);
-        }
-
-        // --- DENNÝ LIMIT (LOCAL STORAGE) LOGIKA ---
-
-        function saveLimitData() {
-            // Uloží denný limit a stav zablokovania do LocalStorage
-            localStorage.setItem(DAILY_COUNT_KEY, dailyCount);
-            localStorage.setItem(LOCKED_UNTIL_KEY, lockedUntil);
-        }
-
-        function loadLimitData() {
-            // Načíta denný limit a stav zablokovania z LocalStorage
-            dailyCount = parseInt(localStorage.getItem(DAILY_COUNT_KEY)) || 0;
-            lockedUntil = parseInt(localStorage.getItem(LOCKED_UNTIL_KEY)) || 0;
-            
-            const now = Date.now();
-
-            // Kontrola, či uplynul lockout (po 4 hodinách)
-            if (lockedUntil > 0 && lockedUntil <= now) {
-                // Lockout vypršal, resetujeme počítadlo
-                dailyCount = 0;
-                lockedUntil = 0;
-                saveLimitData();
-            }
-            
-            updateDailyLimitDisplay();
-        }
-
-        function updateDailyLimitDisplay() {
-            // Aktualizuje zobrazenie denného limitu a stavu zablokovania
-            const now = Date.now();
-            
-            if (lockedUntil > now) {
-                // Používateľ je zablokovaný, zobrazíme zostávajúci čas
-                const remainingMs = lockedUntil - now;
-                const remainingHours = String(Math.floor(remainingMs / (1000 * 60 * 60))).padStart(2, '0');
-                const remainingMinutes = String(Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
-                const remainingSeconds = String(Math.floor((remainingMs % (1000 * 60)) / 1000)).padStart(2, '0');
-                
-                dailyLimitDisplay.classList.remove('text-green-400');
-                dailyLimitDisplay.classList.add('text-red-400', 'font-bold');
-                dailyLimitDisplay.textContent = `Limit (${DAILY_LIMIT}) dosiahnutý. Zablokované: ${remainingHours}:${remainingMinutes}:${remainingSeconds}`;
-
-                // Zablokujeme vstupy, ak nie je aktívny 60-min limit
-                if (timeRemaining > 0) {
-                    userInput.disabled = true;
-                    sendButton.disabled = true;
-                    imageButton.disabled = true;
-                }
-                
-                if (!window.lockoutInterval) {
-                    window.lockoutInterval = setInterval(updateDailyLimitDisplay, 1000);
-                }
-            } else {
-                // Používateľ je aktívny, zobrazíme denné počítadlo
-                dailyLimitDisplay.classList.remove('text-red-400', 'font-bold');
-                dailyLimitDisplay.classList.add('text-green-400');
-                dailyLimitDisplay.textContent = `Denný limit: ${dailyCount} / ${DAILY_LIMIT} správ`;
-
-                // Povoliť chat, len ak nie je zablokovaný 60-min limitom
-                if (timeRemaining > 0) {
-                    userInput.disabled = false;
-                    sendButton.disabled = false;
-                    imageButton.disabled = false;
-                }
-                
-                // Vyčistiť lockout interval
-                if (window.lockoutInterval) {
-                    clearInterval(window.lockoutInterval);
-                    delete window.lockoutInterval;
-                }
-            }
-        }
-
-        function checkDailyLimit() {
-            // Kontroluje, či nebol dosiahnutý denný limit
-            loadLimitData(); 
-            const now = Date.now();
-
-            if (lockedUntil > now) {
-                return { isBlocked: true, reason: 'locked' };
-            }
-
-            if (dailyCount >= DAILY_LIMIT) {
-                // Limit dosiahnutý, aplikujeme 4-hodinový lockout.
-                lockedUntil = now + LOCKOUT_DURATION_MS;
-                saveLimitData();
-                
-                updateDailyLimitDisplay(); // Zobrazí lockout čas
-                return { isBlocked: true, reason: 'limit_hit' };
-            }
-            
-            return { isBlocked: false };
-        }
-
-        function incrementDailyCount() {
-            // Zvýši denné počítadlo
-            dailyCount++;
-            saveLimitData();
-            updateDailyLimitDisplay();
-        }
-
-        function showLimitNotification(message) {
-            // Zobrazí upozornenie o limite priamo v chate
-            const notificationDiv = document.createElement('div');
-            notificationDiv.className = 'text-center p-3 my-4 bg-red-800/50 rounded-lg shadow-inner';
-            notificationDiv.innerHTML = `<p class="text-white font-semibold">🛑 ${message}</p>`;
-            chatWindow.appendChild(notificationDiv);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
-
-        // --- NATIVE TTS LOGIC (Web Speech API) ---
-
-        let slovakVoice = null;
-        let isSpeaking = false;
-
-        // Načíta dostupné hlasy a pokúsi sa nájsť slovenský
-        function loadVoices() {
-            const voices = window.speechSynthesis.getVoices();
-            slovakVoice = voices.find(voice => voice.lang === 'sk-SK' || voice.lang.startsWith('sk'));
-            
-            // Ak sa hlasy nenačítajú hneď (častý problém), pridáme listener
-            if (voices.length === 0 && 'onvoiceschanged' in window.speechSynthesis) {
-                 window.speechSynthesis.onvoiceschanged = () => {
-                    loadVoices();
-                    window.speechSynthesis.onvoiceschanged = null; // Odstránime listener
-                 };
-            }
-        }
-
-        // Zavoláme hneď po štarte (ak nie je načítané, listener to ošetrí)
-        loadVoices(); 
-        
-        function speakMessage(text, buttonElement) {
-            if (isSpeaking) {
-                // Ak už hovorí, zastavíme to
-                window.speechSynthesis.cancel();
-                isSpeaking = false;
-                buttonElement.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
-                return;
-            }
-
-            if (!('speechSynthesis' in window)) {
-                alert('Váš prehliadač nepodporuje funkciu prevodu textu na reč.');
-                return;
-            }
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            
-            // Nastaví nájdený slovenský hlas, inak použije predvolený
-            if (slovakVoice) {
-                utterance.voice = slovakVoice;
-            }
-            utterance.lang = 'sk-SK';
-            utterance.rate = 1.0; 
-
-            const originalIcon = buttonElement.innerHTML;
-            buttonElement.innerHTML = `<i class="fa-solid fa-volume-up text-red-400 animate-pulse"></i>`;
-            buttonElement.disabled = true;
-            isSpeaking = true;
-
-            utterance.onend = () => {
-                buttonElement.innerHTML = originalIcon;
-                buttonElement.disabled = false;
-                isSpeaking = false;
-            };
-
-            utterance.onerror = (event) => {
-                console.error('SpeechSynthesis Utterance Error:', event);
-                buttonElement.innerHTML = originalIcon;
-                buttonElement.disabled = false;
-                isSpeaking = false;
-            };
-
-            window.speechSynthesis.speak(utterance);
-        }
-
-
-        // --- Hlavná funkcia pre odosielanie správ ---
-        async function sendMessage() {
-            // Kontrola 60-minútového limitu
-            if (timeRemaining <= 0) {
-                endTimedSession(); 
-                return;
-            }
-
-            // Kontrola denného limitu 35 správ
-            const limitStatus = checkDailyLimit(); 
-            if (limitStatus.isBlocked) {
-                let message = 'Chat je momentálne zablokovaný, kým neuplynie časový limit. Skontrolujte zostávajúci čas v hlavičke.';
-                if (limitStatus.reason === 'limit_hit') {
-                    message = `Dosiahli ste denný limit ${DAILY_LIMIT} správ! Chat je zablokovaný na 4 hodiny.`;
-                }
-                showLimitNotification(message);
-                return;
-            }
-
-
-            const userMessage = userInput.value.trim();
-            const imageFile = imageInput.files[0];
-            let imageBase64 = null;
-            let mimeType = null;
-            
-            if (!userMessage && !imageFile) return;
-
-            // 1. Zobrazíme správu používateľa (vrátane obrázku, ak je nahraný)
-            const userMessageDiv = document.createElement('div');
-            userMessageDiv.className = 'flex justify-end';
-            let messageContent = `<p>${userMessage}</p>`;
-
-            if (imageFile) {
-                // Ak je nahraný obrázok, načítame ho do Base64 a zobrazíme
-                await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        const base64Data = event.target.result.split(',')[1];
-                        imageBase64 = base64Data;
-                        mimeType = imageFile.type;
-                        
-                        messageContent = `
-                            <div class="mb-2">
-                                <img src="${event.target.result}" class="max-w-full h-auto rounded-lg shadow-md" style="max-height: 200px;">
-                            </div>
-                            ${userMessage ? `<p class="mt-2">${userMessage}</p>` : ''}
-                        `;
-                        resolve();
-                    };
-                    reader.readAsDataURL(imageFile);
-                });
-            }
-
-            userMessageDiv.innerHTML = `
-                <div class="max-w-[80%] bg-purple-700/70 text-white p-3 rounded-2xl rounded-br-none shadow-md">
-                    ${messageContent}
-                </div>
-            `;
-            chatWindow.appendChild(userMessageDiv);
-
-            // 2. Vyčistíme vstup a preview
-            userInput.value = '';
-            imageInput.value = '';
-            imagePreviewContainer.classList.remove('flex');
-            imagePreviewContainer.classList.add('hidden');
-
-            // 3. Zobrazíme indikátor "písania"
-            const typingIndicator = document.createElement('div');
-            typingIndicator.id = 'typing-indicator';
-            typingIndicator.className = 'flex items-start my-4';
-            let indicatorText = 'Píšem odpoveď...';
-            
-            if (imageBase64) {
-                // Špeciálny text pre Vision
-                indicatorText = 'Počkaj Pozerám Obrázok....';
-            }
-
-            typingIndicator.innerHTML = `
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
-                    <i class="fa-solid fa-robot text-white"></i>
-                </div>
-                <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md">
-                    <div class="flex items-center space-x-2">
-                        <span>${indicatorText}</span>
-                        <div class="dot-flashing"></div>
-                    </div>
-                </div>
-            `;
-            chatWindow.appendChild(typingIndicator);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-
-            // 4. Konštrukcia API payloadu
-            const modelToUse = "gemini-2.5-flash-preview-09-2025";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`;
-            
-            // Inštrukcia pre čistý text bez Markdown znakov (ponechaná)
-            const systemPrompt = "Si ChatSlovak Pro, pokročilý, no priateľský AI spoločník. Odpovedaj výhradne a striktne po slovensky na stredne pokročilej úrovni. NEPOUŽÍVAJ ŽIADNE MARKDOWN ZNAKY, ako sú hviezdičky (*), mriežky (#), podčiarkovníky (_) alebo iné symboly formátovania. Generuj len čistý, súvislý text.";
-
-            // Konštrukcia obsahu (Contents)
-            const userParts = [];
-            if (imageBase64) {
-                userParts.push({ inlineData: { mimeType: mimeType, data: imageBase64 } });
-            }
-            if (userMessage) {
-                userParts.push({ text: userMessage });
-            }
-            
-            const newHistoryItem = { role: "user", parts: userParts };
-            const contents = [...chatHistory, newHistoryItem];
-
-            const payload = { 
-                contents: contents,
-                systemInstruction: {
-                    parts: [{ text: systemPrompt }]
-                }
-            };
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const result = await response.json();
-                
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const aiResponse = result.candidates[0].content.parts[0].text;
-                    
-                    // Odstránime indikátor písania
-                    typingIndicator.remove();
-                    
-                    // Zobrazíme odpoveď AI
-                    const aiMessageDiv = document.createElement('div');
-                    aiMessageDiv.className = 'flex items-start my-4';
-                    aiMessageDiv.innerHTML = `
-                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
-                            <i class="fa-solid fa-robot text-white"></i>
-                        </div>
-                        <div class="max-w-[80%] bg-gray-800/70 text-gray-200 p-3 rounded-2xl rounded-bl-none shadow-md whitespace-pre-wrap">
-                            <p>${aiResponse}</p>
-                        </div>
-                        <button onclick="speakMessage(this.previousElementSibling.innerText, this)" class="ml-2 text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none" title="Prečítať správu">
-                            <i class="fa-solid fa-volume-high"></i>
-                        </button>
-                    `;
-                    chatWindow.appendChild(aiMessageDiv);
-
-                    // Pridáme do histórie 
-                    chatHistory.push(newHistoryItem);
-                    chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
-                    
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                    
-                    // 5. Inkrementujeme denný počet správ AŽ po úspešnom odoslaní
-                    incrementDailyCount();
-
-                } else {
-                    typingIndicator.remove();
-                    // Správa o chybe z API
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'flex items-start my-4';
-                    errorDiv.innerHTML = `
-                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
-                            <i class="fa-solid fa-robot text-white"></i>
-                        </div>
-                        <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
-                            <p>Nastala chyba pri generovaní odpovede. (žiadny text v odpovedi)</p>
-                        </div>
-                    `;
-                    chatWindow.appendChild(errorDiv);
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                }
-            } catch (error) {
-                console.error("Chyba pri volaní API:", error);
-                
-                // Odstránime indikátor písania
-                const typingIndicatorElement = document.getElementById('typing-indicator');
-                if (typingIndicatorElement) {
-                    typingIndicatorElement.remove();
-                }
-
-                // Zobrazíme chybovú správu
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'flex items-start my-4';
-                errorDiv.innerHTML = `
-                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center mr-3">
-                        <i class="fa-solid fa-robot text-white"></i>
-                    </div>
-                    <div class="max-w-[80%] bg-red-700/70 text-white p-3 rounded-2xl rounded-bl-none shadow-md">
-                        <p>Nastala chyba pri volaní API. Skúste to znova.</p>
-                    </div>
-                `;
-                chatWindow.appendChild(errorDiv);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            }
-        }
-
-        // --- LISTENERS A SPÚŠŤANIE ---
-        sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        imageButton.addEventListener('click', () => {
-            imageInput.click();
-        });
-
-        imageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    imagePreview.src = event.target.result;
-                    imageFilename.textContent = file.name;
-                    imagePreviewContainer.classList.remove('hidden');
-                    imagePreviewContainer.classList.add('flex');
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('chats')) db.createObjectStore('chats', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('providers')) db.createObjectStore('providers', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('memories')) db.createObjectStore('memories', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('rag_docs')) db.createObjectStore('rag_docs', { keyPath: 'id' });
                 };
-                reader.readAsDataURL(file);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function dbGetAll(storeName) {
+            const db = await openDatabase();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readonly');
+                const req = tx.objectStore(storeName).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function dbPut(storeName, value) {
+            const db = await openDatabase();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                const req = tx.objectStore(storeName).put(value);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function dbDelete(storeName, key) {
+            const db = await openDatabase();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                const req = tx.objectStore(storeName).delete(key);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        const app = {
+            async init() {
+                try {
+                    const loadedChats = await dbGetAll('chats');
+                    if (loadedChats.length > 0) {
+                        state.chats = loadedChats.sort((a, b) => b.updatedAt - a.updatedAt);
+                        state.activeChatId = loadedChats[0].id;
+                    } else {
+                        await this.createNewChat();
+                    }
+
+                    const loadedProviders = await dbGetAll('providers');
+                    if (loadedProviders.length > 0) state.providers = loadedProviders;
+                    else {
+                        state.providers = JSON.parse(JSON.stringify(DEFAULT_PROVIDERS));
+                        for (const p of state.providers) await dbPut('providers', p);
+                    }
+
+                    state.memories = await dbGetAll('memories');
+                    state.ragDocs = await dbGetAll('rag_docs');
+
+                    this.renderChatList();
+                    this.renderProviderSelects();
+                    this.renderMessages();
+                    
+                    setInterval(() => this.checkLocalServices(), 8000);
+                    this.checkLocalServices();
+                    
+                    lucide.createIcons();
+                } catch (e) {
+                    console.error('DB Load Error', e);
+                    this.showToast('Chyba načítania dát z IndexedDB', 'error');
+                }
+            },
+
+            escapeHTML(str) {
+                return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+            },
+
+            parseMarkdownToHTML(text) {
+                if (!text) return '';
+                // 1. Escape basic HTML for safety but preserve thinking logic
+                let safe = this.escapeHTML(text);
+                // 2. Re-enable <think> tags specifically
+                safe = safe.replace(/&lt;think&gt;/g, '<think>').replace(/&lt;\/think&gt;/g, '</think>');
+
+                let html = '';
+                let remaining = safe;
+
+                while (remaining) {
+                    let startIdx = remaining.indexOf('<think>');
+                    if (startIdx !== -1) {
+                        if (startIdx > 0) html += this.formatText(remaining.slice(0, startIdx));
+                        let endIdx = remaining.indexOf('</think>', startIdx);
+                        
+                        if (endIdx !== -1) {
+                            let content = remaining.slice(startIdx + 7, endIdx);
+                            html += this.createThinkHTML(content, false);
+                            remaining = remaining.slice(endIdx + 8);
+                        } else {
+                            let content = remaining.slice(startIdx + 7);
+                            html += this.createThinkHTML(content, true);
+                            remaining = '';
+                        }
+                    } else {
+                        html += this.formatText(remaining);
+                        remaining = '';
+                    }
+                }
+                return `<div class="markdown-body space-y-2">${html}</div>`;
+            },
+
+            createThinkHTML(content, isStreaming) {
+                const iconClass = isStreaming ? "text-teal-400 animate-pulse" : "text-slate-500";
+                const title = isStreaming ? 'Hlbkové uvažovanie v reálnom čase...' : 'Proces uvažovania';
+                const openAttr = isStreaming ? 'open' : '';
+                
+                return `
+                    <details class="think-block group" ${openAttr}>
+                        <summary class="think-summary">
+                            <i data-lucide="brain" class="h-3.5 w-3.5 ${iconClass}"></i>
+                            <span>${title}</span>
+                            <i data-lucide="chevron-down" class="think-icon h-3.5 w-3.5 ml-auto transition-transform"></i>
+                        </summary>
+                        <div class="think-content">${content.trim()}</div>
+                    </details>
+                `;
+            },
+
+            formatText(text) {
+                let parts = [];
+                let regex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
+                let lastIdx = 0;
+                let match;
+
+                while ((match = regex.exec(text)) !== null) {
+                    if (match.index > lastIdx) parts.push({ type: 'text', text: text.slice(lastIdx, match.index) });
+                    parts.push({ type: 'code', lang: match[1] || 'code', code: match[2] });
+                    lastIdx = regex.lastIndex;
+                }
+                if (lastIdx < text.length) parts.push({ type: 'text', text: text.slice(lastIdx) });
+
+                let html = '';
+                parts.forEach(p => {
+                    if (p.type === 'code') {
+                        html += `
+                        <div class="my-3 overflow-hidden rounded-xl border border-slate-700/80 bg-slate-950 font-mono text-xs shadow-lg">
+                            <div class="flex items-center justify-between border-b border-slate-800 bg-slate-900/90 px-4 py-2 text-slate-400">
+                                <span class="font-semibold text-emerald-400 uppercase tracking-wider">${p.lang}</span>
+                                <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(p.code.replace(/&lt;/g, '<').replace(/&gt;/g, '>'))}')); app.showToast('Kopírované do schránky', 'success')" class="hover:text-white flex items-center gap-1">
+                                    <i data-lucide="copy" class="h-3 w-3"></i> Kopírovať
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto p-4 text-slate-200 whitespace-pre">${p.code}</div>
+                        </div>`;
+                    } else {
+                        // Basic formatting
+                        let lines = p.text.split('\n');
+                        lines.forEach(line => {
+                            if (!line.trim()) html += '<div class="h-2"></div>';
+                            else if (line.startsWith('### ')) html += `<h3>${line.slice(4)}</h3>`;
+                            else if (line.startsWith('## ')) html += `<h2>${line.slice(3)}</h2>`;
+                            else if (line.startsWith('# ')) html += `<h1>${line.slice(2)}</h1>`;
+                            else if (line.startsWith('> ')) html += `<blockquote>${line.slice(2)}</blockquote>`;
+                            else if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) html += `<ul><li>${line.trim().slice(2)}</li></ul>`;
+                            else html += `<p>${line}</p>`;
+                        });
+                    }
+                });
+                return html;
+            },
+
+            renderChatList() {
+                const q = document.getElementById('searchInput').value.toLowerCase();
+                const html = state.chats
+                    .filter(c => c.title.toLowerCase().includes(q))
+                    .map(chat => {
+                        const isActive = chat.id === state.activeChatId;
+                        return `
+                        <div onclick="app.setActiveChat('${chat.id}')" class="group flex items-center justify-between rounded-lg px-3 py-2 text-xs transition cursor-pointer ${isActive ? 'bg-slate-800/90 font-medium text-white shadow-sm border-l-2 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'}">
+                            <div class="flex items-center gap-2.5 truncate pr-2">
+                                <i data-lucide="message-square" class="h-3.5 w-3.5 ${isActive ? 'text-emerald-400' : 'text-slate-500'}"></i>
+                                <span class="truncate">${this.escapeHTML(chat.title)}</span>
+                            </div>
+                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <button onclick="event.stopPropagation(); app.deleteChat('${chat.id}')" class="p-1 rounded text-slate-500 hover:bg-slate-700 hover:text-red-400">
+                                    <i data-lucide="trash-2" class="h-3 w-3"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                document.getElementById('chatList').innerHTML = html;
+                lucide.createIcons();
+            },
+
+            renderProviderSelects() {
+                const pSel = document.getElementById('providerSelect');
+                pSel.innerHTML = state.providers.map(p => `<option value="${p.id}" ${!p.enabled ? 'disabled' : ''}>${p.name} ${!p.enabled ? '(Vyp)' : ''}</option>`).join('');
+                pSel.value = state.selectedProviderId;
+
+                this.changeProvider(false); // Update models
+            },
+
+            changeProvider(render = true) {
+                state.selectedProviderId = document.getElementById('providerSelect').value;
+                const prov = state.providers.find(p => p.id === state.selectedProviderId);
+                const mSel = document.getElementById('modelSelect');
+                if (prov && prov.models.length > 0) {
+                    mSel.innerHTML = prov.models.map(m => `<option value="${m}">${m}</option>`).join('');
+                    state.selectedModel = prov.models[0];
+                } else {
+                    mSel.innerHTML = '<option value="">Žiadne modely</option>';
+                    state.selectedModel = '';
+                }
+                if(render) lucide.createIcons();
+            },
+
+            changeModel() {
+                state.selectedModel = document.getElementById('modelSelect').value;
+            },
+
+            renderMessages() {
+                const container = document.getElementById('messagesContainer');
+                const chat = state.chats.find(c => c.id === state.activeChatId);
+                
+                if (!chat || chat.messages.length === 0) {
+                    container.innerHTML = `
+                        <div class="flex h-full flex-col items-center justify-center text-center max-w-xl mx-auto space-y-6">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 shadow-xl shadow-emerald-500/20">
+                                <i data-lucide="sparkles" class="h-8 w-8"></i>
+                            </div>
+                            <div class="space-y-2">
+                                <h2 class="text-2xl font-bold text-slate-100">Vítajte v GAMEPLA631 AI</h2>
+                                <p class="text-sm text-slate-400">Univerzálne open-source AI rozhranie. Lokálne súkromie, neobmedzené možnosti.</p>
+                            </div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                container.innerHTML = chat.messages.map(msg => {
+                    const isUser = msg.role === 'user';
+                    let attachHtml = '';
+                    if (msg.attachments && msg.attachments.length > 0) {
+                        attachHtml = `<div class="mb-3 flex flex-wrap gap-2">` + 
+                            msg.attachments.map(a => `<div class="flex items-center gap-1.5 rounded bg-slate-950/60 px-2.5 py-1 text-xs border border-slate-700"><i data-lucide="${a.type==='image'?'image':'file-text'}" class="h-3 w-3 ${a.type==='image'?'text-emerald-400':'text-teal-400'}"></i><span class="truncate max-w-[150px]">${this.escapeHTML(a.name)}</span></div>`).join('') + 
+                            `</div>`;
+                    }
+
+                    return `
+                    <div class="flex gap-4 ${isUser ? 'justify-end' : 'justify-start'} max-w-4xl mx-auto" id="msg-${msg.id}">
+                        ${!isUser ? `<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500 font-bold text-slate-950 shadow-md">AI</div>` : ''}
+                        
+                        <div class="relative max-w-[85%] rounded-2xl px-5 py-3.5 shadow-md ${isUser ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none'}">
+                            ${attachHtml}
+                            ${isUser ? `<p class="whitespace-pre-wrap text-sm leading-relaxed">${this.escapeHTML(msg.content)}</p>` : `<div class="bot-content">${this.parseMarkdownToHTML(msg.content)}</div>`}
+                            
+                            ${!isUser ? `
+                                <div class="mt-2 flex items-center justify-between border-t border-slate-800/80 pt-2 text-[10px] text-slate-500">
+                                    <span>${msg.provider} • ${msg.model}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        ${isUser ? `<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800 font-bold text-slate-300 border border-slate-700">Vy</div>` : ''}
+                    </div>`;
+                }).join('');
+                
+                container.scrollTop = container.scrollHeight;
+                lucide.createIcons();
+            },
+
+            async createNewChat() {
+                const newChat = { id: 'chat_' + Date.now(), title: 'Nová konverzácia', updatedAt: Date.now(), messages: [] };
+                state.chats.unshift(newChat);
+                state.activeChatId = newChat.id;
+                await dbPut('chats', newChat);
+                this.renderChatList();
+                this.renderMessages();
+            },
+
+            setActiveChat(id) {
+                state.activeChatId = id;
+                this.renderChatList();
+                this.renderMessages();
+            },
+
+            async deleteChat(id) {
+                state.chats = state.chats.filter(c => c.id !== id);
+                await dbDelete('chats', id);
+                if (state.activeChatId === id) {
+                    if (state.chats.length > 0) this.setActiveChat(state.chats[0].id);
+                    else this.createNewChat();
+                } else {
+                    this.renderChatList();
+                }
+            },
+
+            handleKeydown(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            },
+
+            async sendMessage() {
+                if (state.isGenerating) return;
+                const inputEl = document.getElementById('messageInput');
+                const text = inputEl.value;
+                if (!text.trim() && state.attachments.length === 0) return;
+                
+                inputEl.value = '';
+                const chat = state.chats.find(c => c.id === state.activeChatId);
+                if (!chat) return;
+
+                const userMsg = { id: 'msg_' + Date.now(), role: 'user', content: text, attachments: [...state.attachments], timestamp: Date.now() };
+                chat.messages.push(userMsg);
+                state.attachments = [];
+                this.renderAttachments();
+
+                if (chat.title === 'Nová konverzácia') chat.title = text.slice(0, 30) + (text.length > 30 ? '...' : '');
+                chat.updatedAt = Date.now();
+                await dbPut('chats', chat);
+                
+                this.renderChatList();
+                this.renderMessages();
+
+                const prov = state.providers.find(p => p.id === state.selectedProviderId);
+                if (!prov) return this.showToast('Zvolený poskytovateľ neexistuje', 'error');
+
+                const botId = 'msg_' + Date.now();
+                const botMsg = { id: botId, role: 'assistant', content: '', provider: prov.name, model: state.selectedModel, timestamp: Date.now() };
+                chat.messages.push(botMsg);
+                
+                // Append empty bot message directly to DOM for stream performance
+                const container = document.getElementById('messagesContainer');
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="flex gap-4 justify-start max-w-4xl mx-auto" id="msg-${botId}">
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500 font-bold text-slate-950 shadow-md">AI</div>
+                        <div class="relative w-full max-w-[85%] rounded-2xl px-5 py-3.5 shadow-md bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none">
+                            <div class="bot-content" id="content-${botId}">
+                                <div class="h-4 w-4 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin"></div>
+                            </div>
+                            <div class="mt-2 flex items-center justify-between border-t border-slate-800/80 pt-2 text-[10px] text-slate-500">
+                                <span>${prov.name} • ${state.selectedModel}</span>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                container.scrollTop = container.scrollHeight;
+
+                this.setGenerating(true);
+                state.abortController = new AbortController();
+
+                try {
+                    let sysPrompt = state.parameters.systemPrompt;
+                    if (state.memories.length > 0) sysPrompt += '\n\n[PAMÄŤ]:\n' + state.memories.map(m => `- ${m.fact}`).join('\n');
+                    
+                    const apiMessages = [ { role: 'system', content: sysPrompt }, ...chat.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content })) ];
+
+                    let endpoint = `${prov.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+                    if (prov.type === 'ollama' && !prov.baseUrl.endsWith('/v1')) endpoint = `${prov.baseUrl.replace(/\/+$/, '')}/v1/chat/completions`;
+                    
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (prov.apiKey) headers['Authorization'] = `Bearer ${prov.apiKey}`;
+
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({ model: state.selectedModel, messages: apiMessages, temperature: state.parameters.temperature, top_p: state.parameters.topP, max_tokens: state.parameters.maxTokens, stream: true }),
+                        signal: state.abortController.signal
+                    });
+
+                    if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullText = '';
+                    let buffer = '';
+                    let isThinking = false;
+
+                    const contentDiv = document.getElementById(`content-${botId}`);
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            const t = line.trim();
+                            if (t.startsWith('data: ') && t !== 'data: [DONE]') {
+                                try {
+                                    const json = JSON.parse(t.slice(6));
+                                    const delta = json.choices?.[0]?.delta?.content || '';
+                                    const reasoning = json.choices?.[0]?.delta?.reasoning_content || '';
+
+                                    if (reasoning) {
+                                        if (!isThinking) { fullText += '<think>\n'; isThinking = true; }
+                                        fullText += reasoning;
+                                    }
+                                    if (delta) {
+                                        if (isThinking) { fullText += '\n</think>\n\n'; isThinking = false; }
+                                        fullText += delta;
+                                    }
+                                    
+                                    // Throttling DOM updates could be done here, but doing it directly:
+                                    if(delta || reasoning) {
+                                        contentDiv.innerHTML = this.parseMarkdownToHTML(fullText);
+                                        lucide.createIcons({root: contentDiv});
+                                        container.scrollTop = container.scrollHeight;
+                                    }
+                                } catch (e) { /* partial json ignore */ }
+                            }
+                        }
+                    }
+
+                    if(isThinking) fullText += '\n</think>\n'; // close if aborted/ended abruptly
+                    
+                    botMsg.content = fullText;
+                    contentDiv.innerHTML = this.parseMarkdownToHTML(fullText);
+                    lucide.createIcons({root: contentDiv});
+                    await dbPut('chats', chat);
+
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        botMsg.content += `\n\n⚠️ **Chyba spojenia s AI:** ${err.message}`;
+                        document.getElementById(`content-${botId}`).innerHTML = this.parseMarkdownToHTML(botMsg.content);
+                        await dbPut('chats', chat);
+                    }
+                } finally {
+                    this.setGenerating(false);
+                }
+            },
+
+            stopGeneration() {
+                if (state.abortController) state.abortController.abort();
+                this.setGenerating(false);
+            },
+
+            setGenerating(val) {
+                state.isGenerating = val;
+                document.getElementById('sendBtn').classList.toggle('hidden', val);
+                document.getElementById('stopBtn').classList.toggle('hidden', !val);
+            },
+
+            handleFileUpload(e) {
+                Array.from(e.target.files).forEach(f => {
+                    const r = new FileReader();
+                    r.onload = () => {
+                        state.attachments.push({ name: f.name, type: f.type.startsWith('image/') ? 'image' : 'doc', content: r.result });
+                        this.renderAttachments();
+                    };
+                    f.type.startsWith('image/') ? r.readAsDataURL(f) : r.readAsText(f);
+                });
+            },
+
+            renderAttachments() {
+                const bar = document.getElementById('attachmentsBar');
+                const list = document.getElementById('attachmentsList');
+                if (state.attachments.length === 0) bar.classList.add('hidden');
+                else {
+                    bar.classList.remove('hidden');
+                    list.innerHTML = state.attachments.map((a, i) => `
+                        <div class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-200 border border-slate-700">
+                            <i data-lucide="${a.type==='image'?'image':'file-text'}" class="h-3 w-3 ${a.type==='image'?'text-emerald-400':'text-teal-400'}"></i>
+                            <span>${this.escapeHTML(a.name)}</span>
+                            <button onclick="app.removeAttachment(${i})" class="text-slate-400 hover:text-red-400 ml-1"><i data-lucide="x" class="h-3 w-3"></i></button>
+                        </div>
+                    `).join('');
+                    lucide.createIcons({root: bar});
+                }
+            },
+
+            removeAttachment(i) {
+                state.attachments.splice(i, 1);
+                this.renderAttachments();
+            },
+
+            async checkLocalServices() {
+                const lm = state.providers.find(p => p.id === 'lm-studio');
+                if (lm && lm.enabled) {
+                    try {
+                        const r = await fetch(`${lm.baseUrl}/v1/models`, { signal: AbortSignal.timeout(2000) });
+                        if (r.ok) {
+                            const d = await r.json();
+                            lm.models = d.data.map(m => m.id);
+                            document.getElementById('lmStatusIndicator').className = 'h-2 w-2 rounded-full bg-emerald-400 animate-pulse';
+                            document.getElementById('lmStatusText').innerText = 'ONLINE';
+                            if(state.selectedProviderId === 'lm-studio') this.changeProvider(false);
+                        }
+                    } catch(e) {
+                        document.getElementById('lmStatusIndicator').className = 'h-2 w-2 rounded-full bg-red-500';
+                        document.getElementById('lmStatusText').innerText = 'OFFLINE';
+                    }
+                }
+
+                const ollama = state.providers.find(p => p.id === 'ollama');
+                if (ollama && ollama.enabled) {
+                    try {
+                        const r = await fetch(`${ollama.baseUrl}/v1/models`, { signal: AbortSignal.timeout(2000) });
+                        if (r.ok) {
+                            const d = await r.json();
+                            ollama.models = d.data.map(m => m.id);
+                            document.getElementById('ollamaStatusIndicator').className = 'h-2 w-2 rounded-full bg-emerald-400 animate-pulse';
+                            document.getElementById('ollamaStatusText').innerText = 'ONLINE';
+                            if(state.selectedProviderId === 'ollama') this.changeProvider(false);
+                        }
+                    } catch(e) {
+                        document.getElementById('ollamaStatusIndicator').className = 'h-2 w-2 rounded-full bg-red-500';
+                        document.getElementById('ollamaStatusText').innerText = 'OFFLINE';
+                    }
+                }
+            },
+
+            openModal(type) {
+                const overlay = document.getElementById('modalOverlay');
+                const content = document.getElementById('modalContent');
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+
+                let html = '';
+                if (type === 'providers') {
+                    html = `
+                        <div class="flex items-center justify-between border-b border-slate-800 p-5">
+                            <div class="flex items-center gap-2"><i data-lucide="layers" class="h-5 w-5 text-emerald-400"></i><h3 class="text-base font-bold text-white">Služby</h3></div>
+                            <button onclick="app.closeModal()" class="text-slate-400"><i data-lucide="x" class="h-5 w-5"></i></button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-5 space-y-4">
+                            ${state.providers.map((p, i) => `
+                                <div class="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="app.updateProvider(${i}, 'enabled', this.checked)" class="h-4 w-4 accent-emerald-500" />
+                                            <span class="font-semibold text-sm text-slate-100">${p.name}</span>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 text-xs">
+                                        <div><label class="block text-slate-400 mb-1">Base URL</label><input type="text" value="${p.baseUrl}" onchange="app.updateProvider(${i}, 'baseUrl', this.value)" class="w-full rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-200 outline-none focus:border-emerald-500" /></div>
+                                        ${!p.isLocal ? `<div><label class="block text-slate-400 mb-1">API Key</label><input type="password" value="${p.apiKey}" onchange="app.updateProvider(${i}, 'apiKey', this.value)" class="w-full rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-200 outline-none focus:border-emerald-500" /></div>` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else if (type === 'settings') {
+                    html = `
+                        <div class="flex items-center justify-between border-b border-slate-800 p-5">
+                            <div class="flex items-center gap-2"><i data-lucide="sliders" class="h-5 w-5 text-emerald-400"></i><h3 class="text-base font-bold text-white">Parametre AI</h3></div>
+                            <button onclick="app.closeModal()" class="text-slate-400"><i data-lucide="x" class="h-5 w-5"></i></button>
+                        </div>
+                        <div class="p-5 space-y-4 text-xs">
+                            <div><label class="block text-slate-300 font-semibold mb-1">System Prompt</label><textarea onchange="state.parameters.systemPrompt = this.value" class="w-full h-24 rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-slate-200 outline-none focus:border-emerald-500">${this.escapeHTML(state.parameters.systemPrompt)}</textarea></div>
+                            <div><label class="block text-slate-300 font-semibold mb-1">Temperature</label><input type="range" min="0" max="2" step="0.1" value="${state.parameters.temperature}" onchange="state.parameters.temperature = parseFloat(this.value)" class="w-full accent-emerald-500" /></div>
+                        </div>
+                    `;
+                } else if (type === 'memory') {
+                    html = `
+                        <div class="flex items-center justify-between border-b border-slate-800 p-5">
+                            <div class="flex items-center gap-2"><i data-lucide="brain" class="h-5 w-5 text-teal-400"></i><h3 class="text-base font-bold text-white">Lokálna AI Pamäť</h3></div>
+                            <button onclick="app.closeModal()" class="text-slate-400"><i data-lucide="x" class="h-5 w-5"></i></button>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <div class="flex gap-2"><input type="text" id="memInput" placeholder="Pridať nový fakt..." class="flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500"/><button onclick="app.addMemory()" class="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950">Pridať</button></div>
+                            <div class="max-h-60 overflow-y-auto space-y-2" id="memList">
+                                ${state.memories.map(m => `<div class="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950 p-2.5 text-xs"><span class="text-slate-300">${this.escapeHTML(m.fact)}</span><button onclick="app.delMemory('${m.id}')" class="text-slate-500"><i data-lucide="trash-2" class="h-4 w-4"></i></button></div>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else if (type === 'github') {
+                     html = `
+                        <div class="flex items-center justify-between border-b border-slate-800 p-5">
+                            <div class="flex items-center gap-2"><i data-lucide="file-code" class="h-5 w-5 text-purple-400"></i><h3 class="text-base font-bold text-white">GitHub Hostovanie</h3></div>
+                            <button onclick="app.closeModal()" class="text-slate-400"><i data-lucide="x" class="h-5 w-5"></i></button>
+                        </div>
+                        <div class="p-5 text-xs text-slate-300">Tento súbor index.html je plne sebestačný. Stačí ho nahrať na GitHub Pages a máte vlastné súkromné AI rozhranie zadarmo. Všetky dáta sú len vo vašom prehliadači (IndexedDB).</div>
+                    `;
+                } else {
+                    html = `<div class="p-5 text-center text-slate-400">Not implemented in quick demo</div><button onclick="app.closeModal()" class="m-5 text-emerald-400">Zavrieť</button>`;
+                }
+
+                content.innerHTML = html;
+                lucide.createIcons({root: content});
+            },
+
+            closeModal() {
+                document.getElementById('modalOverlay').classList.add('hidden');
+                document.getElementById('modalOverlay').classList.remove('flex');
+            },
+
+            async updateProvider(idx, key, val) {
+                state.providers[idx][key] = val;
+                await dbPut('providers', state.providers[idx]);
+                this.renderProviderSelects();
+                this.checkLocalServices();
+            },
+
+            async addMemory() {
+                const val = document.getElementById('memInput').value.trim();
+                if(!val) return;
+                const mem = { id: 'mem_' + Date.now(), fact: val, date: Date.now() };
+                state.memories.push(mem);
+                await dbPut('memories', mem);
+                this.openModal('memory');
+            },
+
+            async delMemory(id) {
+                state.memories = state.memories.filter(m => m.id !== id);
+                await dbDelete('memories', id);
+                this.openModal('memory');
+            },
+
+            showToast(text, type = 'info') {
+                const t = document.getElementById('toast');
+                document.getElementById('toastText').innerText = text;
+                t.className = `fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl border px-4 py-3 text-xs font-semibold shadow-2xl transition ${type === 'error' ? 'border-red-500/80 bg-red-950/90 text-red-200' : 'border-emerald-500/80 bg-slate-900 text-emerald-300'}`;
+                t.classList.remove('hidden');
+                setTimeout(() => t.classList.add('hidden'), 3000);
             }
-        });
+        };
 
-        removeImageButton.addEventListener('click', () => {
-            imageInput.value = ''; 
-            imagePreviewContainer.classList.remove('flex');
-            imagePreviewContainer.classList.add('hidden');
-            imagePreview.src = '';
-            imageFilename.textContent = '';
-        });
-
-        // Spustenie časovača a inicializácie limitov po načítaní stránky
-        document.addEventListener('DOMContentLoaded', () => {
-             startTimer();
-             loadLimitData(); // Načítanie a kontrola limitov z LocalStorage
-        });
-
+        window.onload = () => app.init();
     </script>
 </body>
 </html>
-
 
 
 
